@@ -36,6 +36,9 @@
         header {
             text-align: center;
             margin-bottom: 20px;
+            position: relative;
+            width: 100%;
+            max-width: 800px;
         }
 
         h1 {
@@ -47,6 +50,24 @@
         .subtitle {
             color: var(--text-muted);
             font-size: 0.95rem;
+        }
+
+        .settings-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #334155;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .settings-btn:hover {
+            background: #475569;
         }
 
         .container {
@@ -62,6 +83,47 @@
             border-radius: 16px;
             padding: 20px;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Модальное окно настроек */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border: 1px solid #334155;
+        }
+        .modal-content h3 {
+            color: var(--accent-yellow);
+            margin-bottom: 5px;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1rem;
+        }
+        .setting-row input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent-green);
+            cursor: pointer;
         }
 
         .mic-section {
@@ -211,10 +273,6 @@
         .btn-blue { background-color: var(--accent-blue); }
         .btn-blue:hover { background-color: #2563eb; }
 
-        .commands-guide {
-            margin-top: 10px;
-        }
-
         .commands-guide h3 {
             margin-bottom: 10px;
             color: var(--accent-yellow);
@@ -250,7 +308,24 @@
     <header>
         <h1>🎾 Голосовой теннисный арбитр</h1>
         <p class="subtitle">Управляйте счетом с помощью речи на русском языке</p>
+        <button class="settings-btn" id="openSettings" title="Настройки">⚙️</button>
     </header>
+
+    <!-- Модальное окно настроек -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h3>⚙️ Настройки приложения</h3>
+            <div class="setting-row">
+                <label for="ttsToggle">Озвучка счета голосом</label>
+                <input type="checkbox" id="ttsToggle" checked>
+            </div>
+            <div class="setting-row">
+                <label for="continuousToggle">Вечный режим (авторестарт)</label>
+                <input type="checkbox" id="continuousToggle" checked>
+            </div>
+            <button class="btn btn-blue" id="closeSettings">Закрыть</button>
+        </div>
+    </div>
 
     <div class="container">
         <!-- Блок голосового управления -->
@@ -262,7 +337,6 @@
 
         <!-- Табло счета -->
         <div class="card scoreboard">
-            <!-- Игрок 1 -->
             <div id="player1Card" class="player-card serving">
                 <span class="server-ball">🎾</span>
                 <input type="text" id="p1Name" class="player-name-input" value="Игрок 1">
@@ -271,7 +345,6 @@
                 <div id="p1Sets" class="sets-history">Сеты: -</div>
             </div>
 
-            <!-- Игрок 2 -->
             <div id="player2Card" class="player-card">
                 <span class="server-ball">🎾</span>
                 <input type="text" id="p2Name" class="player-name-input" value="Игрок 2">
@@ -306,7 +379,11 @@
     </div>
 
     <script>
-        // Состояние матча
+        let settings = {
+            ttsEnabled: localStorage.getItem('tennis_tts') !== 'false',
+            continuous: localStorage.getItem('tennis_continuous') !== 'false'
+        };
+
         let matchState = {
             p1PointsIndex: 0,
             p2PointsIndex: 0,
@@ -314,7 +391,7 @@
             p2Games: 0,
             p1Sets: [],
             p2Sets: [],
-            server: 1, // 1 или 2
+            server: 1,
             isTiebreak: false,
             p1TBPoints: 0,
             p2TBPoints: 0,
@@ -324,11 +401,9 @@
         const standardPoints = ["0", "15", "30", "40", "АД"];
         let history = [];
 
-        // DOM элементы
         const micBtn = document.getElementById('micBtn');
         const statusText = document.getElementById('statusText');
         const lastCommand = document.getElementById('lastCommand');
-
         const p1NameInput = document.getElementById('p1Name');
         const p2NameInput = document.getElementById('p2Name');
         const p1PointsEl = document.getElementById('p1Points');
@@ -340,8 +415,28 @@
         const player1Card = document.getElementById('player1Card');
         const player2Card = document.getElementById('player2Card');
 
-        // Озвучка речи (Text-to-Speech)
+        const settingsModal = document.getElementById('settingsModal');
+        document.getElementById('openSettings').onclick = () => settingsModal.classList.add('active');
+        document.getElementById('closeSettings').onclick = () => settingsModal.classList.remove('active');
+
+        const ttsToggle = document.getElementById('ttsToggle');
+        const continuousToggle = document.getElementById('continuousToggle');
+
+        ttsToggle.checked = settings.ttsEnabled;
+        continuousToggle.checked = settings.continuous;
+
+        ttsToggle.onchange = (e) => {
+            settings.ttsEnabled = e.target.checked;
+            localStorage.setItem('tennis_tts', settings.ttsEnabled);
+        };
+
+        continuousToggle.onchange = (e) => {
+            settings.continuous = e.target.checked;
+            localStorage.setItem('tennis_continuous', settings.continuous);
+        };
+
         function speak(text) {
+            if (!settings.ttsEnabled) return;
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
@@ -351,13 +446,11 @@
             }
         }
 
-        // Сохранение истории для отмены
         function saveHistory() {
             history.push(JSON.parse(JSON.stringify(matchState)));
             if (history.length > 20) history.shift();
         }
 
-        // Отмена последнего действия
         function undoLast() {
             if (history.length > 0) {
                 matchState = history.pop();
@@ -366,7 +459,6 @@
             }
         }
 
-        // Добавление очка
         function addPoint(player) {
             if (matchState.isFinished) return;
             saveHistory();
@@ -387,21 +479,16 @@
             let oppScore = isP1 ? matchState.p2PointsIndex : matchState.p1PointsIndex;
 
             if (myScore === 3 && oppScore === 3) {
-                // 40 - 40 -> Больше
                 if (isP1) matchState.p1PointsIndex = 4;
                 else matchState.p2PointsIndex = 4;
             } else if (myScore === 4 && oppScore === 3) {
-                // Выигрыш гейма из Больше
                 winGame(player);
             } else if (myScore === 3 && oppScore === 4) {
-                // Возврат к Ровно
                 if (isP1) matchState.p2PointsIndex = 3;
                 else matchState.p1PointsIndex = 3;
             } else if (myScore === 3) {
-                // Выигрыш гейма из 40
                 winGame(player);
             } else {
-                // Обычный набо очков 0 -> 15 -> 30 -> 40
                 if (isP1) matchState.p1PointsIndex++;
                 else matchState.p2PointsIndex++;
             }
@@ -411,13 +498,11 @@
             if (player === 1) matchState.p1TBPoints++;
             else matchState.p2TBPoints++;
 
-            // Смена подачи каждые 2 очка в тай-брейке
             const totalTB = matchState.p1TBPoints + matchState.p2TBPoints;
             if (totalTB % 2 === 1) {
                 toggleServer(false);
             }
 
-            // Проверка победы в тай-брейке (до 7 очков с разницей >= 2)
             if (matchState.p1TBPoints >= 7 && (matchState.p1TBPoints - matchState.p2TBPoints >= 2)) {
                 winGame(1);
             } else if (matchState.p2TBPoints >= 7 && (matchState.p2TBPoints - matchState.p1TBPoints >= 2)) {
@@ -435,10 +520,8 @@
             if (player === 1) matchState.p1Games++;
             else matchState.p2Games++;
 
-            // Смена подачи после каждого гейма
             toggleServer(false);
 
-            // Проверка победы в сете
             const g1 = matchState.p1Games;
             const g2 = matchState.p2Games;
 
@@ -457,7 +540,7 @@
             matchState.p1Games = 0;
             matchState.p2Games = 0;
 
-            if (matchState.p1Sets.length + matchState.p2Sets.length >= 3) { // Игра до 2 сетов
+            if (matchState.p1Sets.length + matchState.p2Sets.length >= 3) {
                 matchState.isFinished = true;
             }
         }
@@ -487,12 +570,7 @@
             speak("Матч сброшен");
         }
 
-        // Обновление интерфейса
         function updateUI() {
-            const p1Name = p1NameInput.value || "Игрок 1";
-            const p2Name = p2NameInput.value || "Игрок 2";
-
-            // Очки
             if (matchState.isTiebreak) {
                 p1PointsEl.textContent = matchState.p1TBPoints;
                 p2PointsEl.textContent = matchState.p2TBPoints;
@@ -501,15 +579,12 @@
                 p2PointsEl.textContent = standardPoints[matchState.p2PointsIndex];
             }
 
-            // Геймы
             p1GamesEl.textContent = `Геймы: ${matchState.p1Games} ${matchState.isTiebreak ? '(ТБ)' : ''}`;
             p2GamesEl.textContent = `Геймы: ${matchState.p2Games} ${matchState.isTiebreak ? '(ТБ)' : ''}`;
 
-            // Сеты
             p1SetsEl.textContent = `Сеты: ${matchState.p1Sets.join(' | ') || '-'}`;
             p2SetsEl.textContent = `Сеты: ${matchState.p2Sets.join(' | ') || '-'}`;
 
-            // Подача
             if (matchState.server === 1) {
                 player1Card.classList.add('serving');
                 player2Card.classList.remove('serving');
@@ -519,7 +594,6 @@
             }
         }
 
-        // Озвучивание актуального счета
         function announceScore() {
             const p1Name = p1NameInput.value;
             const p2Name = p2NameInput.value;
@@ -531,12 +605,12 @@
 
             if (matchState.p1PointsIndex === 0 && matchState.p2PointsIndex === 0 && 
                 matchState.p1TBPoints === 0 && matchState.p2TBPoints === 0) {
-                speak(`Гейм! Счет по геймам ${matchState.p1Games} : ${matchState.p2Games}`);
+                speak(`Гейм! ${matchState.p1Games} - ${matchState.p2Games}`);
                 return;
             }
 
             if (matchState.isTiebreak) {
-                speak(`${matchState.p1TBPoints} : ${matchState.p2TBPoints}`);
+                speak(`${matchState.p1TBPoints}, ${matchState.p2TBPoints}`);
                 return;
             }
 
@@ -554,7 +628,6 @@
             }
         }
 
-        // Web Speech API - Распознавание речи
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (SpeechRecognition) {
@@ -564,25 +637,38 @@
             recognition.lang = 'ru-RU';
 
             let isListening = false;
+            let manualStop = false;
 
             micBtn.addEventListener('click', () => {
                 if (isListening) {
+                    manualStop = true;
                     recognition.stop();
                 } else {
-                    recognition.start();
+                    manualStop = false;
+                    try {
+                        recognition.start();
+                    } catch(e) { console.log(e); }
                 }
             });
 
             recognition.onstart = () => {
                 isListening = true;
                 micBtn.classList.add('listening');
-                statusText.textContent = "Слушаю команды...";
+                statusText.textContent = "Слушаю команды (вечный режим)...";
             };
 
             recognition.onend = () => {
+                if (!manualStop && settings.continuous) {
+                    try {
+                        recognition.start();
+                        return;
+                    } catch (e) {
+                        console.log("Ошибка рестарта:", e);
+                    }
+                }
                 isListening = false;
                 micBtn.classList.remove('listening');
-                statusText.textContent = "Микрофон выключен (нажмите, чтобы включить)";
+                statusText.textContent = "Микрофон выключен";
             };
 
             recognition.onresult = (event) => {
@@ -594,14 +680,13 @@
 
             recognition.onerror = (event) => {
                 console.error("Ошибка распознавания:", event.error);
-                statusText.textContent = "Ошибка микрофона";
+                statusText.textContent = "Ошибка микрофона (повтор...)";
             };
         } else {
-            statusText.textContent = "Ваш браузер не поддерживает голосовой ввод";
+            statusText.textContent = "Браузер не поддерживает голосовой ввод";
             micBtn.style.display = 'none';
         }
 
-        // Обработка фразы
         function processVoiceCommand(text) {
             const p1Name = p1NameInput.value.toLowerCase();
             const p2Name = p2NameInput.value.toLowerCase();
