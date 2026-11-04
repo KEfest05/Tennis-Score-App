@@ -52,21 +52,30 @@
             font-size: 0.95rem;
         }
 
-        .settings-btn {
+        .header-btns {
             position: absolute;
             top: 0;
             right: 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
             background: #334155;
             border: none;
             color: white;
             font-size: 1.2rem;
-            padding: 10px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             cursor: pointer;
             transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .settings-btn:hover {
+        .icon-btn:hover {
             background: #475569;
         }
 
@@ -76,6 +85,7 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            transition: all 0.3s ease;
         }
 
         .card {
@@ -83,6 +93,73 @@
             border-radius: 16px;
             padding: 20px;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        /* Полноэкранный режим табло */
+        body.fullscreen-mode header,
+        body.fullscreen-mode .controls,
+        body.fullscreen-mode .commands-guide,
+        body.fullscreen-mode .mic-section .last-command,
+        body.fullscreen-mode .mic-section .status-text {
+            display: none !important;
+        }
+
+        body.fullscreen-mode {
+            padding: 10px;
+            justify-content: center;
+        }
+
+        body.fullscreen-mode .container {
+            max-width: 100%;
+            height: 100vh;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        body.fullscreen-mode .scoreboard {
+            flex: 1;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        body.fullscreen-mode .player-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        body.fullscreen-mode .score-points {
+            font-size: 18vw; /* Автоматический огромный размер на весь экран */
+            margin: 0;
+        }
+
+        body.fullscreen-mode .player-name-input {
+            font-size: 2rem;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        body.fullscreen-mode .score-games, 
+        body.fullscreen-mode .sets-history {
+            font-size: 1.4rem;
+        }
+
+        body.fullscreen-mode .mic-section {
+            background: transparent;
+            box-shadow: none;
+            padding: 0;
+        }
+
+        body.fullscreen-mode .mic-btn {
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+            opacity: 0.8;
+        }
+        body.fullscreen-mode .mic-btn:hover {
+            opacity: 1;
         }
 
         /* Модальное окно настроек */
@@ -230,6 +307,7 @@
             color: var(--accent-green);
             margin: 10px 0;
             line-height: 1;
+            transition: font-size 0.3s ease;
         }
 
         .score-games {
@@ -308,7 +386,10 @@
     <header>
         <h1>🎾 Голосовой теннисный арбитр</h1>
         <p class="subtitle">Управляйте счетом с помощью речи на русском языке</p>
-        <button class="settings-btn" id="openSettings" title="Настройки">⚙️</button>
+        <div class="header-btns">
+            <button class="icon-btn" id="fullscreenBtn" title="На весь экран">⛶</button>
+            <button class="icon-btn" id="openSettings" title="Настройки">⚙️</button>
+        </div>
     </header>
 
     <!-- Модальное окно настроек -->
@@ -414,6 +495,19 @@
         const p2SetsEl = document.getElementById('p2Sets');
         const player1Card = document.getElementById('player1Card');
         const player2Card = document.getElementById('player2Card');
+
+        // Управление полноэкранным режимом
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        fullscreenBtn.addEventListener('click', () => {
+            document.body.classList.toggle('fullscreen-mode');
+            if (document.body.classList.contains('fullscreen-mode')) {
+                fullscreenBtn.textContent = '✕';
+                fullscreenBtn.title = 'Свернуть табло';
+            } else {
+                fullscreenBtn.textContent = '⛶';
+                fullscreenBtn.title = 'На весь экран';
+            }
+        });
 
         const settingsModal = document.getElementById('settingsModal');
         document.getElementById('openSettings').onclick = () => settingsModal.classList.add('active');
