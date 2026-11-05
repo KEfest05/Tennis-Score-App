@@ -73,6 +73,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 50;
         }
 
         .icon-btn:hover {
@@ -96,7 +97,7 @@
             transition: all 0.3s ease;
         }
 
-        /* Полноэкранный режим табло */
+        /* ПОЛНОЭКРАННЫЙ РЕЖИМ */
         body.fullscreen-mode header,
         body.fullscreen-mode .controls,
         body.fullscreen-mode .commands-guide,
@@ -115,6 +116,21 @@
             height: 100vh;
             justify-content: center;
             gap: 15px;
+            position: relative;
+        }
+
+        /* Гарантированная плавающая кнопка выхода в полноэкранном режиме */
+        body.fullscreen-mode #fullscreenBtn {
+            position: fixed !important;
+            top: 15px !important;
+            right: 15px !important;
+            background: var(--accent-red) !important;
+            width: 60px !important;
+            height: 60px !important;
+            font-size: 2rem !important;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8) !important;
+            z-index: 99999 !important;
+            display: flex !important;
         }
 
         body.fullscreen-mode .scoreboard {
@@ -131,7 +147,7 @@
         }
 
         body.fullscreen-mode .score-points {
-            font-size: 18vw; /* Автоматический огромный размер на весь экран */
+            font-size: 18vw;
             margin: 0;
         }
 
@@ -157,9 +173,6 @@
             height: 60px;
             font-size: 1.5rem;
             opacity: 0.8;
-        }
-        body.fullscreen-mode .mic-btn:hover {
-            opacity: 1;
         }
 
         /* Модальное окно настроек */
