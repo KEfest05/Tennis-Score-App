@@ -12,6 +12,13 @@
     <header>
         <h1>🎾 Голосовой теннисный арбитр</h1>
         <p class="subtitle">Управляйте счетом с помощью речи на русском языке</p>
+        
+        <!-- Индикатор статуса и живой таймер матча -->
+        <div id="matchBadge" class="match-status-badge">
+            <span class="status-dot"></span>
+            <span id="matchStatusText">Ожидание старта матча</span>
+        </div>
+
         <div class="header-btns">
             <button class="icon-btn" id="openStats" title="Статистика матча">📊</button>
             <button class="icon-btn" id="fullscreenBtn" title="На весь экран">⛶</button>
