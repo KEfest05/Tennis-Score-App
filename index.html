@@ -110,6 +110,7 @@
         body.fullscreen-mode {
             padding: 10px;
             justify-content: center;
+            overflow: hidden;
         }
 
         body.fullscreen-mode .container {
@@ -120,20 +121,21 @@
             position: relative;
         }
 
-        /* Блок микрофона в полноэкранном режиме превращается в аккуратную панель сверху */
+        /* Плавающая панель сверху по центру */
         body.fullscreen-mode .mic-section {
-            background: rgba(30, 41, 59, 0.85) !important;
-            backdrop-filter: blur(8px);
+            background: rgba(30, 41, 59, 0.9) !important;
+            backdrop-filter: blur(10px);
             padding: 8px 16px !important;
-            border-radius: 30px !important;
+            border-radius: 40px !important;
             flex-direction: row !important;
-            gap: 12px !important;
+            gap: 15px !important;
             position: absolute !important;
-            top: 10px !important;
+            top: 15px !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
             z-index: 99999 !important;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
+            display: flex !important;
         }
 
         body.fullscreen-mode .mic-btn {
@@ -148,17 +150,25 @@
             background: var(--accent-red) !important;
             width: 45px !important;
             height: 45px !important;
-            font-size: 1.3rem !important;
+            font-size: 1.4rem !important;
             display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
             border-radius: 50% !important;
             box-shadow: none !important;
+            color: white !important;
+        }
+
+        /* Скрываем настройки в полноэкранном режиме */
+        body.fullscreen-mode #openSettings {
+            display: none !important;
         }
 
         body.fullscreen-mode .scoreboard {
             flex: 1;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
-            margin-top: 45px;
+            margin-top: 50px;
         }
 
         body.fullscreen-mode .player-card {
@@ -518,14 +528,19 @@
         const player1Card = document.getElementById('player1Card');
         const player2Card = document.getElementById('player2Card');
 
-        // Управление полноэкранным режимом
+        // Управление полноэкранным режимом и физический перенос кнопки
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         fullscreenBtn.addEventListener('click', () => {
             document.body.classList.toggle('fullscreen-mode');
+            const micSection = document.querySelector('.mic-section');
+            const headerBtns = document.querySelector('.header-btns');
+
             if (document.body.classList.contains('fullscreen-mode')) {
+                micSection.appendChild(fullscreenBtn);
                 fullscreenBtn.textContent = '✕';
                 fullscreenBtn.title = 'Свернуть табло';
             } else {
+                headerBtns.appendChild(fullscreenBtn);
                 fullscreenBtn.textContent = '⛶';
                 fullscreenBtn.title = 'На весь экран';
             }
