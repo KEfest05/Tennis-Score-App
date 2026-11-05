@@ -405,6 +405,8 @@ body.fullscreen-mode .sets-history {
 .btn-green:hover { background-color: #16a34a; }
 .btn-blue { background-color: var(--accent-blue); }
 .btn-blue:hover { background-color: #2563eb; }
+.btn-yellow { background-color: var(--accent-yellow); color: #000; }
+.btn-yellow:hover { background-color: #ca8a04; }
 
 .commands-guide h3 {
     margin-bottom: 10px;
