@@ -41,8 +41,9 @@ const p1SetsEl = document.getElementById('p1Sets');
 const p2SetsEl = document.getElementById('p2Sets');
 const player1Card = document.getElementById('player1Card');
 const player2Card = document.getElementById('player2Card');
+const matchBadge = document.getElementById('matchBadge');
+const matchStatusText = document.getElementById('matchStatusText');
 
-// Генерация короткого звукового сигнала (бипа)
 function playBeep(freq = 600, duration = 100) {
     if (!settings.beepEnabled) return;
     try {
@@ -67,7 +68,6 @@ function playBeep(freq = 600, duration = 100) {
     }
 }
 
-// Управление полноэкранным режимом и физический перенос кнопки
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 fullscreenBtn.addEventListener('click', () => {
     document.body.classList.toggle('fullscreen-mode');
@@ -85,7 +85,6 @@ fullscreenBtn.addEventListener('click', () => {
     }
 });
 
-// Управление модальными окнами (Настройки и Статистика)
 const settingsModal = document.getElementById('settingsModal');
 const statsModal = document.getElementById('statsModal');
 
@@ -138,10 +137,17 @@ function startMatch() {
     matchState.isStarted = true;
     matchState.startTime = Date.now() - (matchState.elapsedSeconds * 1000);
     
+    matchBadge.classList.add('active');
+
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
         if (matchState.isStarted && !matchState.isFinished) {
             matchState.elapsedSeconds = Math.floor((Date.now() - matchState.startTime) / 1000);
+            
+            // Обновляем таймер в шапке в реальном времени
+            const mins = Math.floor(matchState.elapsedSeconds / 60);
+            const secs = matchState.elapsedSeconds % 60;
+            matchStatusText.textContent = `Матч идет: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
     }, 1000);
 
@@ -166,7 +172,6 @@ function undoLast() {
 function addPoint(player) {
     if (matchState.isFinished) return;
     
-    // Если нажали очко до явного старта, автоматически стартуем матч
     if (!matchState.isStarted) {
         startMatch();
     }
@@ -258,6 +263,7 @@ function winSet(player) {
     if (matchState.p1Sets.length + matchState.p2Sets.length >= 3) {
         matchState.isFinished = true;
         if (timerInterval) clearInterval(timerInterval);
+        matchStatusText.textContent = "Матч окончен";
     }
 }
 
@@ -288,6 +294,10 @@ function resetMatch() {
         p2TotalPointsWon: 0,
         totalPointsPlayed: 0
     };
+    
+    matchBadge.classList.remove('active');
+    matchStatusText.textContent = "Ожидание старта матча";
+    
     history = [];
     updateUI();
     speak("Матч сброшен");
