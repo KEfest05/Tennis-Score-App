@@ -110,11 +110,12 @@
 
         <!-- Кнопки ручного управления -->
         <div class="card controls">
-            <button class="btn btn-yellow" onclick="startMatch()">▶️ Старт матча</button>
+            <button class="btn btn-yellow" id="startPauseBtn" onclick="toggleMatchState()">▶️ Старт матча</button>
             <button class="btn btn-green" onclick="addPoint(1)">+1 Игрок 1</button>
             <button class="btn btn-green" onclick="addPoint(2)">+1 Игрок 2</button>
-            <button class="btn btn-blue" onclick="toggleServer()">Сменить подачу</button>
+            <button class="btn btn-blue" onclick="toggleServer()">Смена подачи</button>
             <button class="btn" onclick="undoLast()">Отмена (Undo)</button>
+            <button class="btn" style="background-color: #3b82f6;" onclick="finishMatch()">🏁 Завершить</button>
             <button class="btn" style="background-color: var(--accent-red);" onclick="resetMatch()">Сброс матча</button>
         </div>
 
