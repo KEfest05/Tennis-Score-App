@@ -13,6 +13,7 @@
         <h1>🎾 Голосовой теннисный арбитр</h1>
         <p class="subtitle">Управляйте счетом с помощью речи на русском языке</p>
         <div class="header-btns">
+            <button class="icon-btn" id="openStats" title="Статистика матча">📊</button>
             <button class="icon-btn" id="fullscreenBtn" title="На весь экран">⛶</button>
             <button class="icon-btn" id="openSettings" title="Настройки">⚙️</button>
         </div>
@@ -35,6 +36,41 @@
                 <input type="checkbox" id="beepToggle" checked>
             </div>
             <button class="btn btn-blue" id="closeSettings">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно статистики -->
+    <div class="modal" id="statsModal">
+        <div class="modal-content">
+            <h3>📊 Статистика матча</h3>
+            <div class="setting-row">
+                <span>Длительность матча:</span>
+                <strong id="statDuration" style="color: var(--accent-yellow);">0 мин 0 сек</strong>
+            </div>
+            <hr style="border: 0; border-top: 1px solid #334155; margin: 5px 0;">
+            <div style="display: flex; justify-content: space-between; font-weight: bold; color: var(--text-muted); font-size: 0.9rem;">
+                <span id="statP1Title">Игрок 1</span>
+                <span id="statP2Title">Игрок 2</span>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div id="statP1Points" class="stat-value">0</div>
+                    <div class="stat-label">Выиграно очков</div>
+                </div>
+                <div class="stat-box">
+                    <div id="statP2Points" class="stat-value">0</div>
+                    <div class="stat-label">Выиграно очков</div>
+                </div>
+                <div class="stat-box">
+                    <div id="statP1Pct" class="stat-value">0%</div>
+                    <div class="stat-label">% очков</div>
+                </div>
+                <div class="stat-box">
+                    <div id="statP2Pct" class="stat-value">0%</div>
+                    <div class="stat-label">% очков</div>
+                </div>
+            </div>
+            <button class="btn btn-blue" id="closeStats" style="margin-top: 10px;">Закрыть</button>
         </div>
     </div>
 
