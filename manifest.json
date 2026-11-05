@@ -1,0 +1,15 @@
+{
+  "name": "Голосовой теннисный арбитр",
+  "short_name": "Теннис Арбитр",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/512/tennis.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
