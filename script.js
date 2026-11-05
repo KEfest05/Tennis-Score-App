@@ -17,6 +17,7 @@ let matchState = {
     p2TBPoints: 0,
     isFinished: false,
     isStarted: false,
+    isPaused: false,
     startTime: null,
     elapsedSeconds: 0,
     p1TotalPointsWon: 0,
@@ -43,6 +44,7 @@ const player1Card = document.getElementById('player1Card');
 const player2Card = document.getElementById('player2Card');
 const matchBadge = document.getElementById('matchBadge');
 const matchStatusText = document.getElementById('matchStatusText');
+const startPauseBtn = document.getElementById('startPauseBtn');
 
 function playBeep(freq = 600, duration = 100) {
     if (!settings.beepEnabled) return;
@@ -132,27 +134,67 @@ function speak(text) {
     }
 }
 
-function startMatch() {
-    if (matchState.isStarted) return;
-    matchState.isStarted = true;
-    matchState.startTime = Date.now() - (matchState.elapsedSeconds * 1000);
-    
-    matchBadge.classList.add('active');
+// Управление Старт / Пауза одной кнопкой
+function toggleMatchState() {
+    if (matchState.isFinished) return;
 
+    if (!matchState.isStarted || matchState.isPaused) {
+        // Запуск или возобновление
+        matchState.isStarted = true;
+        matchState.isPaused = false;
+        matchState.startTime = Date.now() - (matchState.elapsedSeconds * 1000);
+
+        matchBadge.className = "match-status-badge active";
+        startPauseBtn.textContent = "⏸️ Пауза";
+        startPauseBtn.className = "btn btn-yellow";
+
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (matchState.isStarted && !matchState.isPaused && !matchState.isFinished) {
+                matchState.elapsedSeconds = Math.floor((Date.now() - matchState.startTime) / 1000);
+                const mins = Math.floor(matchState.elapsedSeconds / 60);
+                const secs = matchState.elapsedSeconds % 60;
+                matchStatusText.textContent = `Матч идет: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            }
+        }, 1000);
+
+        playBeep(900, 200);
+        speak("Матч начался");
+    } else {
+        // Уход на паузу
+        matchState.isPaused = true;
+        if (timerInterval) clearInterval(timerInterval);
+
+        matchBadge.className = "match-status-badge paused";
+        startPauseBtn.textContent = "▶️ Продолжить";
+        startPauseBtn.className = "btn btn-green";
+
+        const mins = Math.floor(matchState.elapsedSeconds / 60);
+        const secs = matchState.elapsedSeconds % 60;
+        matchStatusText.textContent = `Пауза (${mins}:${secs < 10 ? '0' : ''}${secs})`;
+
+        playBeep(500, 150);
+        speak("Матч на паузе");
+    }
+}
+
+function finishMatch() {
+    if (matchState.isFinished) return;
+    matchState.isFinished = true;
+    matchState.isPaused = false;
     if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        if (matchState.isStarted && !matchState.isFinished) {
-            matchState.elapsedSeconds = Math.floor((Date.now() - matchState.startTime) / 1000);
-            
-            // Обновляем таймер в шапке в реальном времени
-            const mins = Math.floor(matchState.elapsedSeconds / 60);
-            const secs = matchState.elapsedSeconds % 60;
-            matchStatusText.textContent = `Матч идет: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
-        }
-    }, 1000);
 
-    playBeep(900, 200);
-    speak("Матч начался!");
+    matchBadge.className = "match-status-badge finished";
+    matchStatusText.textContent = "Матч завершен";
+    startPauseBtn.textContent = "▶️ Старт матча";
+    startPauseBtn.className = "btn btn-yellow";
+
+    playBeep(400, 300);
+    speak("Матч завершен!");
+
+    // Автоматически открываем статистику в конце
+    updateStatsDisplay();
+    statsModal.classList.add('active');
 }
 
 function saveHistory() {
@@ -172,8 +214,10 @@ function undoLast() {
 function addPoint(player) {
     if (matchState.isFinished) return;
     
-    if (!matchState.isStarted) {
-        startMatch();
+    // Автостарт, если матч еще не был запущен
+    if (!matchState.isStarted || matchState.isPaused) {
+        toggleMatchState();
+        return; // Пропускаем добавление очка при первом клике автостарта, либо убираем return если нужно сразу засчитать
     }
 
     saveHistory();
@@ -261,9 +305,7 @@ function winSet(player) {
     matchState.p2Games = 0;
 
     if (matchState.p1Sets.length + matchState.p2Sets.length >= 3) {
-        matchState.isFinished = true;
-        if (timerInterval) clearInterval(timerInterval);
-        matchStatusText.textContent = "Матч окончен";
+        finishMatch();
     }
 }
 
@@ -288,6 +330,7 @@ function resetMatch() {
         p2TBPoints: 0,
         isFinished: false,
         isStarted: false,
+        isPaused: false,
         startTime: null,
         elapsedSeconds: 0,
         p1TotalPointsWon: 0,
@@ -295,8 +338,10 @@ function resetMatch() {
         totalPointsPlayed: 0
     };
     
-    matchBadge.classList.remove('active');
+    matchBadge.className = "match-status-badge";
     matchStatusText.textContent = "Ожидание старта матча";
+    startPauseBtn.textContent = "▶️ Старт матча";
+    startPauseBtn.className = "btn btn-yellow";
     
     history = [];
     updateUI();
