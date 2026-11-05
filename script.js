@@ -15,7 +15,12 @@ let matchState = {
     isTiebreak: false,
     p1TBPoints: 0,
     p2TBPoints: 0,
-    isFinished: false
+    isFinished: false,
+    // Статистика
+    startTime: Date.now(),
+    p1TotalPointsWon: 0,
+    p2TotalPointsWon: 0,
+    totalPointsPlayed: 0
 };
 
 const standardPoints = ["0", "15", "30", "40", "АД"];
@@ -78,9 +83,18 @@ fullscreenBtn.addEventListener('click', () => {
     }
 });
 
+// Управление модальными окнами (Настройки и Статистика)
 const settingsModal = document.getElementById('settingsModal');
+const statsModal = document.getElementById('statsModal');
+
 document.getElementById('openSettings').onclick = () => settingsModal.classList.add('active');
 document.getElementById('closeSettings').onclick = () => settingsModal.classList.remove('active');
+
+document.getElementById('openStats').onclick = () => {
+    updateStatsDisplay();
+    statsModal.classList.add('active');
+};
+document.getElementById('closeStats').onclick = () => statsModal.classList.remove('active');
 
 const ttsToggle = document.getElementById('ttsToggle');
 const continuousToggle = document.getElementById('continuousToggle');
@@ -126,7 +140,7 @@ function undoLast() {
     if (history.length > 0) {
         matchState = history.pop();
         updateUI();
-        playBeep(400, 150); // Низкий бип при отмене
+        playBeep(400, 150);
         speak("Очко отменено");
     }
 }
@@ -135,6 +149,10 @@ function addPoint(player) {
     if (matchState.isFinished) return;
     saveHistory();
 
+    matchState.totalPointsPlayed++;
+    if (player === 1) matchState.p1TotalPointsWon++;
+    else matchState.p2TotalPointsWon++;
+
     if (matchState.isTiebreak) {
         handleTiebreakPoint(player);
     } else {
@@ -142,7 +160,7 @@ function addPoint(player) {
     }
 
     updateUI();
-    playBeep(700, 100); // Звонкий бип при очке
+    playBeep(700, 100);
     announceScore();
 }
 
@@ -236,7 +254,11 @@ function resetMatch() {
         isTiebreak: false,
         p1TBPoints: 0,
         p2TBPoints: 0,
-        isFinished: false
+        isFinished: false,
+        startTime: Date.now(),
+        p1TotalPointsWon: 0,
+        p2TotalPointsWon: 0,
+        totalPointsPlayed: 0
     };
     history = [];
     updateUI();
@@ -265,6 +287,29 @@ function updateUI() {
         player2Card.classList.add('serving');
         player1Card.classList.remove('serving');
     }
+}
+
+function updateStatsDisplay() {
+    const p1Name = p1NameInput.value;
+    const p2Name = p2NameInput.value;
+
+    document.getElementById('statP1Title').textContent = p1Name;
+    document.getElementById('statP2Title').textContent = p2Name;
+
+    document.getElementById('statP1Points').textContent = matchState.p1TotalPointsWon;
+    document.getElementById('statP2Points').textContent = matchState.p2TotalPointsWon;
+
+    const total = matchState.totalPointsPlayed || 1;
+    const p1Pct = Math.round((matchState.p1TotalPointsWon / total) * 100);
+    const p2Pct = Math.round((matchState.p2TotalPointsWon / total) * 100);
+
+    document.getElementById('statP1Pct').textContent = p1Pct + '%';
+    document.getElementById('statP2Pct').textContent = p2Pct + '%';
+
+    const diffMs = Date.now() - matchState.startTime;
+    const mins = Math.floor(diffMs / 60000);
+    const secs = Math.floor((diffMs % 60000) / 1000);
+    document.getElementById('statDuration').textContent = `${mins} мин ${secs < 10 ? '0' : ''}${secs} сек`;
 }
 
 function announceScore() {
