@@ -120,24 +120,45 @@
             position: relative;
         }
 
-        /* Гарантированная плавающая кнопка выхода в полноэкранном режиме */
-        body.fullscreen-mode #fullscreenBtn {
-            position: fixed !important;
-            top: 15px !important;
-            right: 15px !important;
-            background: var(--accent-red) !important;
-            width: 60px !important;
-            height: 60px !important;
-            font-size: 2rem !important;
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8) !important;
+        /* Блок микрофона в полноэкранном режиме превращается в аккуратную панель сверху */
+        body.fullscreen-mode .mic-section {
+            background: rgba(30, 41, 59, 0.85) !important;
+            backdrop-filter: blur(8px);
+            padding: 8px 16px !important;
+            border-radius: 30px !important;
+            flex-direction: row !important;
+            gap: 12px !important;
+            position: absolute !important;
+            top: 10px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
             z-index: 99999 !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+        }
+
+        body.fullscreen-mode .mic-btn {
+            width: 45px !important;
+            height: 45px !important;
+            font-size: 1.2rem !important;
+        }
+
+        /* Кнопка выхода встает рядом с микрофоном */
+        body.fullscreen-mode #fullscreenBtn {
+            position: static !important;
+            background: var(--accent-red) !important;
+            width: 45px !important;
+            height: 45px !important;
+            font-size: 1.3rem !important;
             display: flex !important;
+            border-radius: 50% !important;
+            box-shadow: none !important;
         }
 
         body.fullscreen-mode .scoreboard {
             flex: 1;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
+            margin-top: 45px;
         }
 
         body.fullscreen-mode .player-card {
@@ -161,19 +182,6 @@
         body.fullscreen-mode .score-games, 
         body.fullscreen-mode .sets-history {
             font-size: 1.4rem;
-        }
-
-        body.fullscreen-mode .mic-section {
-            background: transparent;
-            box-shadow: none;
-            padding: 0;
-        }
-
-        body.fullscreen-mode .mic-btn {
-            width: 60px;
-            height: 60px;
-            font-size: 1.5rem;
-            opacity: 0.8;
         }
 
         /* Модальное окно настроек */
