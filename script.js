@@ -139,7 +139,6 @@ function toggleMatchState() {
     if (matchState.isFinished) return;
 
     if (!matchState.isStarted || matchState.isPaused) {
-        // Запуск или возобновление
         matchState.isStarted = true;
         matchState.isPaused = false;
         matchState.startTime = Date.now() - (matchState.elapsedSeconds * 1000);
@@ -161,7 +160,6 @@ function toggleMatchState() {
         playBeep(900, 200);
         speak("Матч начался");
     } else {
-        // Уход на паузу
         matchState.isPaused = true;
         if (timerInterval) clearInterval(timerInterval);
 
@@ -192,7 +190,6 @@ function finishMatch() {
     playBeep(400, 300);
     speak("Матч завершен!");
 
-    // Автоматически открываем статистику в конце
     updateStatsDisplay();
     statsModal.classList.add('active');
 }
@@ -214,10 +211,9 @@ function undoLast() {
 function addPoint(player) {
     if (matchState.isFinished) return;
     
-    // Автостарт, если матч еще не был запущен
     if (!matchState.isStarted || matchState.isPaused) {
         toggleMatchState();
-        return; // Пропускаем добавление очка при первом клике автостарта, либо убираем return если нужно сразу засчитать
+        return;
     }
 
     saveHistory();
@@ -491,7 +487,16 @@ function processVoiceCommand(text) {
     const p1Name = p1NameInput.value.toLowerCase();
     const p2Name = p2NameInput.value.toLowerCase();
 
-    if (text.includes('очко первому') || text.includes('первый') || text.includes('раз') || text.includes('очко 1') || text.includes(p1Name)) {
+    // Новые голосовые команды управления таймингом
+    if (text.includes('старт матча') || text.includes('начать матч') || text.includes('старт')) {
+        if (!matchState.isStarted || matchState.isPaused) toggleMatchState();
+    } else if (text.includes('пауза') || text.includes('стоп')) {
+        if (matchState.isStarted && !matchState.isPaused) toggleMatchState();
+    } else if (text.includes('завершить матч') || text.includes('конец матча')) {
+        finishMatch();
+    } 
+    // Стандартные команды счета
+    else if (text.includes('очко первому') || text.includes('первый') || text.includes('раз') || text.includes('очко 1') || text.includes(p1Name)) {
         addPoint(1);
     } else if (text.includes('очко второму') || text.includes('второй') || text.includes('два') || text.includes('очко 2') || text.includes(p2Name)) {
         addPoint(2);
