@@ -151,7 +151,8 @@ body.fullscreen-mode #fullscreenBtn {
     color: white !important;
 }
 
-body.fullscreen-mode #openSettings {
+body.fullscreen-mode #openSettings,
+body.fullscreen-mode #openStats {
     display: none !important;
 }
 
@@ -185,7 +186,7 @@ body.fullscreen-mode .sets-history {
     font-size: 1.4rem;
 }
 
-/* Модальное окно настроек */
+/* Модальные окна */
 .modal {
     display: none;
     position: fixed;
@@ -229,6 +230,32 @@ body.fullscreen-mode .sets-history {
     height: 20px;
     accent-color: var(--accent-green);
     cursor: pointer;
+}
+
+/* Стили для блока статистики */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.stat-box {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stat-box .stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--accent-green);
+}
+
+.stat-box .stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
 }
 
 .mic-section {
@@ -406,4 +433,4 @@ body.fullscreen-mode .sets-history {
     .scoreboard {
         grid-template-columns: 1fr;
     }
-
+}
