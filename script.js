@@ -16,13 +16,15 @@ let matchState = {
     p1TBPoints: 0,
     p2TBPoints: 0,
     isFinished: false,
-    // Статистика
-    startTime: Date.now(),
+    isStarted: false,
+    startTime: null,
+    elapsedSeconds: 0,
     p1TotalPointsWon: 0,
     p2TotalPointsWon: 0,
     totalPointsPlayed: 0
 };
 
+let timerInterval = null;
 const standardPoints = ["0", "15", "30", "40", "АД"];
 let history = [];
 
@@ -131,6 +133,22 @@ function speak(text) {
     }
 }
 
+function startMatch() {
+    if (matchState.isStarted) return;
+    matchState.isStarted = true;
+    matchState.startTime = Date.now() - (matchState.elapsedSeconds * 1000);
+    
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+        if (matchState.isStarted && !matchState.isFinished) {
+            matchState.elapsedSeconds = Math.floor((Date.now() - matchState.startTime) / 1000);
+        }
+    }, 1000);
+
+    playBeep(900, 200);
+    speak("Матч начался!");
+}
+
 function saveHistory() {
     history.push(JSON.parse(JSON.stringify(matchState)));
     if (history.length > 20) history.shift();
@@ -147,6 +165,12 @@ function undoLast() {
 
 function addPoint(player) {
     if (matchState.isFinished) return;
+    
+    // Если нажали очко до явного старта, автоматически стартуем матч
+    if (!matchState.isStarted) {
+        startMatch();
+    }
+
     saveHistory();
 
     matchState.totalPointsPlayed++;
@@ -233,6 +257,7 @@ function winSet(player) {
 
     if (matchState.p1Sets.length + matchState.p2Sets.length >= 3) {
         matchState.isFinished = true;
+        if (timerInterval) clearInterval(timerInterval);
     }
 }
 
@@ -243,6 +268,7 @@ function toggleServer(userAction = true) {
 }
 
 function resetMatch() {
+    if (timerInterval) clearInterval(timerInterval);
     matchState = {
         p1PointsIndex: 0,
         p2PointsIndex: 0,
@@ -255,7 +281,9 @@ function resetMatch() {
         p1TBPoints: 0,
         p2TBPoints: 0,
         isFinished: false,
-        startTime: Date.now(),
+        isStarted: false,
+        startTime: null,
+        elapsedSeconds: 0,
         p1TotalPointsWon: 0,
         p2TotalPointsWon: 0,
         totalPointsPlayed: 0
@@ -306,9 +334,8 @@ function updateStatsDisplay() {
     document.getElementById('statP1Pct').textContent = p1Pct + '%';
     document.getElementById('statP2Pct').textContent = p2Pct + '%';
 
-    const diffMs = Date.now() - matchState.startTime;
-    const mins = Math.floor(diffMs / 60000);
-    const secs = Math.floor((diffMs % 60000) / 1000);
+    const mins = Math.floor(matchState.elapsedSeconds / 60);
+    const secs = matchState.elapsedSeconds % 60;
     document.getElementById('statDuration').textContent = `${mins} мин ${secs < 10 ? '0' : ''}${secs} сек`;
 }
 
