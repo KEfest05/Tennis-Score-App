@@ -13,6 +13,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
 let currentUser = null;
 let currentNick = "";
 let currentRoomCode = null;
@@ -20,13 +21,39 @@ let isHost = false;
 let userRole = "viewer"; // "host", "p1", "p2", "viewer"
 let pendingRoomCode = null;
 let unsubscribeRoom = null;
-
-// Переключение формы входа на форму регистрации
-const showRegisterBtn = document.getElementById('showRegisterBtn');
-const registerBtn = document.getElementById('registerBtn');
-const authNickname = document.getElementById('authNickname');
 let isRegisterMode = false;
 
+// --- DOM ЭЛЕМЕНТЫ (объявлены в начале для избежания ошибок инициализации) ---
+const p1NameInput = document.getElementById('p1Name');
+const p2NameInput = document.getElementById('p2Name');
+const authNickname = document.getElementById('authNickname');
+const showRegisterBtn = document.getElementById('showRegisterBtn');
+const registerBtn = document.getElementById('registerBtn');
+const authModal = document.getElementById('authModal');
+const roomModal = document.getElementById('roomModal');
+const profileModal = document.getElementById('profileModal');
+const settingsModal = document.getElementById('settingsModal');
+const statsModal = document.getElementById('statsModal');
+const micBtn = document.getElementById('micBtn');
+const statusText = document.getElementById('statusText');
+const lastCommand = document.getElementById('lastCommand');
+const p1PointsEl = document.getElementById('p1Points');
+const p2PointsEl = document.getElementById('p2Points');
+const p1GamesEl = document.getElementById('p1Games');
+const p2GamesEl = document.getElementById('p2Games');
+const p1SetsEl = document.getElementById('p1Sets');
+const p2SetsEl = document.getElementById('p2Sets');
+const player1Card = document.getElementById('player1Card');
+const player2Card = document.getElementById('player2Card');
+const matchBadge = document.getElementById('matchBadge');
+const matchStatusText = document.getElementById('matchStatusText');
+const startPauseBtn = document.getElementById('startPauseBtn');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+const ttsToggle = document.getElementById('ttsToggle');
+const continuousToggle = document.getElementById('continuousToggle');
+const beepToggle = document.getElementById('beepToggle');
+
+// --- АВТОРИЗАЦИЯ И ПРОФИЛЬ ---
 showRegisterBtn.onclick = () => {
     if (!isRegisterMode) {
         isRegisterMode = true;
@@ -36,7 +63,6 @@ showRegisterBtn.onclick = () => {
     }
 };
 
-// Отслеживание авторизации и загрузка профиля из Firestore
 auth.onAuthStateChanged((user) => {
     currentUser = user;
     const authLoggedOut = document.getElementById('authLoggedOut');
@@ -69,16 +95,13 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// Модальные окна
-const authModal = document.getElementById('authModal');
+// Управление модальными окнами
 document.getElementById('openAuth').onclick = () => authModal.classList.add('active');
 document.getElementById('closeAuth').onclick = () => authModal.classList.remove('active');
 
-const roomModal = document.getElementById('roomModal');
 document.getElementById('openRoom').onclick = () => roomModal.classList.add('active');
 document.getElementById('closeRoom').onclick = () => roomModal.classList.remove('active');
 
-// Вход
 document.getElementById('loginBtn').onclick = () => {
     const email = document.getElementById('authEmail').value;
     const password = document.getElementById('authPassword').value;
@@ -87,7 +110,6 @@ document.getElementById('loginBtn').onclick = () => {
         .catch((error) => alert("Ошибка входа: " + error.message));
 };
 
-// Регистрация
 registerBtn.onclick = () => {
     const email = document.getElementById('authEmail').value;
     const password = document.getElementById('authPassword').value;
@@ -118,7 +140,6 @@ document.getElementById('logoutBtn').onclick = () => {
 };
 
 // --- ЛИЧНЫЙ КАБИНЕТ И ИСТОРИЯ МАТЧЕЙ ---
-const profileModal = document.getElementById('profileModal');
 document.getElementById('openProfile').onclick = () => {
     if (!currentUser) {
         alert("Пожалуйста, войдите в аккаунт, чтобы открыть личный кабинет!");
@@ -350,9 +371,7 @@ function syncRoom() {
 p1NameInput.oninput = () => { syncRoom(); };
 p2NameInput.oninput = () => { syncRoom(); };
 
-
 // --- ОСНОВНАЯ ЛОГИКА ТЕННИСНОГО АРБИТРА ---
-
 let settings = {
     ttsEnabled: localStorage.getItem('tennis_tts') !== 'false',
     continuous: localStorage.getItem('tennis_continuous') !== 'false',
@@ -384,23 +403,6 @@ let timerInterval = null;
 const standardPoints = ["0", "15", "30", "40", "АД"];
 let history = [];
 
-const micBtn = document.getElementById('micBtn');
-const statusText = document.getElementById('statusText');
-const lastCommand = document.getElementById('lastCommand');
-const p1NameInput = document.getElementById('p1Name');
-const p2NameInput = document.getElementById('p2Name');
-const p1PointsEl = document.getElementById('p1Points');
-const p2PointsEl = document.getElementById('p2Points');
-const p1GamesEl = document.getElementById('p1Games');
-const p2GamesEl = document.getElementById('p2Games');
-const p1SetsEl = document.getElementById('p1Sets');
-const p2SetsEl = document.getElementById('p2Sets');
-const player1Card = document.getElementById('player1Card');
-const player2Card = document.getElementById('player2Card');
-const matchBadge = document.getElementById('matchBadge');
-const matchStatusText = document.getElementById('matchStatusText');
-const startPauseBtn = document.getElementById('startPauseBtn');
-
 function playBeep(freq = 600, duration = 100) {
     if (!settings.beepEnabled) return;
     try {
@@ -417,7 +419,6 @@ function playBeep(freq = 600, duration = 100) {
     } catch (e) { console.log(e); }
 }
 
-const fullscreenBtn = document.getElementById('fullscreenBtn');
 fullscreenBtn.addEventListener('click', () => {
     document.body.classList.toggle('fullscreen-mode');
     const micSection = document.querySelector('.mic-section');
@@ -431,16 +432,10 @@ fullscreenBtn.addEventListener('click', () => {
     }
 });
 
-const settingsModal = document.getElementById('settingsModal');
-const statsModal = document.getElementById('statsModal');
 document.getElementById('openSettings').onclick = () => settingsModal.classList.add('active');
 document.getElementById('closeSettings').onclick = () => settingsModal.classList.remove('active');
 document.getElementById('openStats').onclick = () => { updateStatsDisplay(); statsModal.classList.add('active'); };
 document.getElementById('closeStats').onclick = () => statsModal.classList.remove('active');
-
-const ttsToggle = document.getElementById('ttsToggle');
-const continuousToggle = document.getElementById('continuousToggle');
-const beepToggle = document.getElementById('beepToggle');
 
 ttsToggle.checked = settings.ttsEnabled;
 continuousToggle.checked = settings.continuous;
@@ -739,6 +734,7 @@ function announceScore() {
     else speak(`${p1}, ${p2}`);
 }
 
+// --- ГОЛОСОВОЕ УПРАВЛЕНИЕ ---
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (SpeechRecognition) {
     const recognition = new SpeechRecognition();
