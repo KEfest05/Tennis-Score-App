@@ -14,28 +14,60 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 let currentUser = null;
+let currentNick = "";
 let currentRoomCode = null;
 let isHost = false;
 let unsubscribeRoom = null;
 
-// Отслеживание состояния авторизации
+// Переключение формы входа на форму регистрации
+const showRegisterBtn = document.getElementById('showRegisterBtn');
+const registerBtn = document.getElementById('registerBtn');
+const authNickname = document.getElementById('authNickname');
+let isRegisterMode = false;
+
+showRegisterBtn.onclick = () => {
+    if (!isRegisterMode) {
+        isRegisterMode = true;
+        authNickname.style.display = 'block';
+        registerBtn.style.display = 'block';
+        showRegisterBtn.style.display = 'none';
+    }
+};
+
+// Отслеживание авторизации и загрузка профиля из Firestore
 auth.onAuthStateChanged((user) => {
     currentUser = user;
     const authLoggedOut = document.getElementById('authLoggedOut');
     const authLoggedIn = document.getElementById('authLoggedIn');
     const userEmailDisplay = document.getElementById('userEmailDisplay');
+    const userNickDisplay = document.getElementById('userNickDisplay');
 
     if (user) {
         authLoggedOut.style.display = 'none';
         authLoggedIn.style.display = 'block';
         userEmailDisplay.textContent = user.email;
+
+        db.collection("users").doc(user.uid).get().then(doc => {
+            if (doc.exists) {
+                currentNick = doc.data().nickname || "Игрок";
+                userNickDisplay.textContent = currentNick;
+                if (p1NameInput.value === "Игрок 1" || !p1NameInput.value) {
+                    p1NameInput.value = currentNick;
+                }
+            }
+        });
     } else {
         authLoggedOut.style.display = 'block';
         authLoggedIn.style.display = 'none';
+        isRegisterMode = false;
+        authNickname.style.display = 'none';
+        registerBtn.style.display = 'none';
+        showRegisterBtn.style.display = 'block';
+        currentNick = "";
     }
 });
 
-// Управление модальными окнами
+// Модальные окна
 const authModal = document.getElementById('authModal');
 document.getElementById('openAuth').onclick = () => authModal.classList.add('active');
 document.getElementById('closeAuth').onclick = () => authModal.classList.remove('active');
@@ -44,7 +76,7 @@ const roomModal = document.getElementById('roomModal');
 document.getElementById('openRoom').onclick = () => roomModal.classList.add('active');
 document.getElementById('closeRoom').onclick = () => roomModal.classList.remove('active');
 
-// Авторизация
+// Вход
 document.getElementById('loginBtn').onclick = () => {
     const email = document.getElementById('authEmail').value;
     const password = document.getElementById('authPassword').value;
@@ -53,11 +85,29 @@ document.getElementById('loginBtn').onclick = () => {
         .catch((error) => alert("Ошибка входа: " + error.message));
 };
 
-document.getElementById('registerBtn').onclick = () => {
+// Регистрация
+registerBtn.onclick = () => {
     const email = document.getElementById('authEmail').value;
     const password = document.getElementById('authPassword').value;
+    const nickname = authNickname.value.trim();
+
+    if (!nickname) {
+        alert("Введите ник!");
+        return;
+    }
+
     auth.createUserWithEmailAndPassword(email, password)
-        .then(() => { alert("Регистрация успешна!"); authModal.classList.remove('active'); })
+        .then((cred) => {
+            return db.collection("users").doc(cred.user.uid).set({
+                email: email,
+                nickname: nickname,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        })
+        .then(() => {
+            alert("Регистрация успешна!");
+            authModal.classList.remove('active');
+        })
         .catch((error) => alert("Ошибка регистрации: " + error.message));
 };
 
@@ -65,11 +115,90 @@ document.getElementById('logoutBtn').onclick = () => {
     auth.signOut().then(() => alert("Вы вышли из аккаунта"));
 };
 
-// --- УПРАВЛЕНИЕ КОМНАТАМИ В РЕАЛЬНОМ ВРЕМЕНИ ---
+// --- ЛИЧНЫЙ КАБИНЕТ И ИСТОРИЯ МАТЧЕЙ ---
+const profileModal = document.getElementById('profileModal');
+document.getElementById('openProfile').onclick = () => {
+    if (!currentUser) {
+        alert("Пожалуйста, войдите в аккаунт, чтобы открыть личный кабинет!");
+        authModal.classList.add('active');
+        return;
+    }
+    loadUserProfileAndMatches();
+    profileModal.classList.add('active');
+};
+document.getElementById('closeProfile').onclick = () => profileModal.classList.remove('active');
+
+function loadUserProfileAndMatches() {
+    const profileNotLogged = document.getElementById('profileNotLogged');
+    const profileLogged = document.getElementById('profileLogged');
+    
+    if (!currentUser) {
+        profileNotLogged.style.display = 'block';
+        profileLogged.style.display = 'none';
+        return;
+    }
+
+    profileNotLogged.style.display = 'none';
+    profileLogged.style.display = 'block';
+
+    document.getElementById('profileNick').textContent = currentNick || "Игрок";
+    document.getElementById('profileEmail').textContent = currentUser.email;
+
+    const historyListContainer = document.getElementById('matchesHistoryList');
+    historyListContainer.innerHTML = "Загрузка истории...";
+
+    db.collection("matches")
+        .where("userId", "==", currentUser.uid)
+        .orderBy("timestamp", "desc")
+        .get()
+        .then((querySnapshot) => {
+            historyListContainer.innerHTML = "";
+            document.getElementById('profileMatchesCount').textContent = querySnapshot.size;
+
+            if (querySnapshot.empty) {
+                historyListContainer.innerHTML = "<p style='color: var(--text-muted); font-size: 0.9rem;'>У вас пока нет сохраненных матчей.</p>";
+                return;
+            }
+
+            querySnapshot.forEach((doc) => {
+                const match = doc.data();
+                const date = match.timestamp ? match.timestamp.toDate().toLocaleDateString('ru-RU') : "Недавно";
+                const mins = Math.floor((match.durationSeconds || 0) / 60);
+                const setsP1 = match.p1Sets ? match.p1Sets.join('-') : '0';
+                const setsP2 = match.p2Sets ? match.p2Sets.join('-') : '0';
+
+                const matchCard = document.createElement('div');
+                matchCard.style.cssText = "background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px; border: 1px solid #334155; font-size: 0.9rem;";
+                matchCard.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 4px;">
+                        <span>📅 ${date}</span>
+                        <span>⏱️ ${mins} мин</span>
+                    </div>
+                    <div style="font-weight: bold; color: var(--text-main);">
+                        ${match.player1} vs ${match.player2}
+                    </div>
+                    <div style="color: var(--accent-green); margin-top: 2px;">
+                        Счет по сетам: <b>${setsP1} : ${setsP2}</b> (Очков: ${match.p1PointsWon} / ${match.p2PointsWon})
+                    </div>
+                `;
+                historyListContainer.appendChild(matchCard);
+            });
+        })
+        .catch((error) => {
+            console.error("Ошибка загрузки истории:", error);
+            historyListContainer.innerHTML = "<p style='color: var(--accent-red); font-size: 0.85rem;'>Ошибка загрузки. Если в консоли есть ссылка на индекс Firestore, нажмите на неё.</p>";
+        });
+}
+
+// --- УПРАВЛЕНИЕ КОМНАТАМИ ---
 document.getElementById('createRoomBtn').onclick = () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     currentRoomCode = code;
     isHost = true;
+
+    if (currentNick) {
+        p1NameInput.value = currentNick;
+    }
 
     db.collection("rooms").doc(code).set({
         state: matchState,
