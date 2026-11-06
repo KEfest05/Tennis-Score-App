@@ -23,6 +23,7 @@ let pendingRoomCode = null;
 let unsubscribeRoom = null;
 let isRegisterMode = false;
 let myParticipantEntry = null; // Точная запись текущего пользователя в списке участников
+let isLocalUpdating = false;   // Флаг защиты от сетевого отката счета
 
 // --- DOM ЭЛЕМЕНТЫ ---
 const p1NameInput = document.getElementById('p1Name');
@@ -56,7 +57,6 @@ const beepToggle = document.getElementById('beepToggle');
 
 // --- УПРАВЛЕНИЕ ПРАВАМИ И ДОСТУПОМ ---
 function updateControlPermissions() {
-    // Если мы в комнате и роль зрителя (не хост, не игрок 1 и не игрок 2)
     if (currentRoomCode && userRole === "viewer") {
         document.body.classList.add('viewer-mode');
     } else {
@@ -324,12 +324,10 @@ function joinAsRole(role) {
         }
 
         let participants = data.participants || [];
-        
         participants = participants.filter(p => !p.startsWith(myName));
 
         const roleLabel = role === "p1" ? " (Игрок 1)" : role === "p2" ? " (Игрок 2)" : " (Зритель)";
         myParticipantEntry = myName + roleLabel;
-        
         participants.push(myParticipantEntry);
 
         db.collection("rooms").doc(currentRoomCode).update({
@@ -356,7 +354,8 @@ function subscribeToRoom(code) {
             const data = docSnap.data();
             const wasFinished = matchState.isFinished;
 
-            if (data.state) {
+            // Защита от сетевого отката: не применяем снимок сервера, если только что локально изменили счет
+            if (data.state && !isLocalUpdating) {
                 matchState = data.state;
                 updateUI();
             }
@@ -427,8 +426,9 @@ function cleanupRoomState() {
     isHost = false;
     userRole = "viewer";
     myParticipantEntry = null;
+    isLocalUpdating = false;
     
-    updateControlPermissions(); // Возвращаем полный доступ интерфейсу вне комнаты
+    updateControlPermissions();
     
     document.getElementById('roomControls').style.display = 'block';
     document.getElementById('roomActiveInfo').style.display = 'none';
@@ -455,12 +455,19 @@ function resetMatchStateOnly() {
 
 function syncRoom() {
     if (currentRoomCode && (isHost || userRole === "p1" || userRole === "p2")) {
+        // Устанавливаем защиту на 600мс от входящих сетевых перезаписей
+        isLocalUpdating = true;
+        setTimeout(() => { isLocalUpdating = false; }, 600);
+
         db.collection("rooms").doc(currentRoomCode).set({
             state: matchState,
             p1Name: p1NameInput.value,
             p2Name: p2NameInput.value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).catch(err => console.error("Ошибка синхронизации:", err));
+        }, { merge: true }).catch(err => {
+            isLocalUpdating = false;
+            console.error("Ошибка синхронизации:", err);
+        });
     }
 }
 
@@ -903,7 +910,7 @@ if (SpeechRecognition) {
     let manualStop = false;
 
     micBtn.addEventListener('click', () => {
-        if (currentRoomCode && userRole === "viewer") return; // Зрители не могут использовать микрофон
+        if (currentRoomCode && userRole === "viewer") return;
         if (isListening) { manualStop = true; recognition.stop(); }
         else { manualStop = false; try { recognition.start(); } catch(e) { console.log(e); } }
     });
