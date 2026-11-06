@@ -23,7 +23,6 @@ let pendingRoomCode = null;
 let unsubscribeRoom = null;
 let isRegisterMode = false;
 let myParticipantEntry = null; // Точная запись текущего пользователя в списке участников
-let isLocalUpdating = false;   // Флаг защиты от сетевого отката счета
 
 // --- DOM ЭЛЕМЕНТЫ ---
 const p1NameInput = document.getElementById('p1Name');
@@ -354,11 +353,15 @@ function subscribeToRoom(code) {
             const data = docSnap.data();
             const wasFinished = matchState.isFinished;
 
-            // Игнорируем входящие сетевые обновления, если только что локально изменили счет (защита на 1.5с)
-            if (data.state && !isLocalUpdating) {
-                matchState = data.state;
-                updateUI();
+            // Принимаем данные от сервера ТОЛЬКО ЕСЛИ их версия новее или равна нашей локальной версии
+            if (data.state) {
+                const serverVersion = data.state.version || 0;
+                if (serverVersion >= matchState.version) {
+                    matchState = data.state;
+                    updateUI();
+                }
             }
+
             if (data.p1Name) p1NameInput.value = data.p1Name;
             if (data.p2Name) p2NameInput.value = data.p2Name;
 
@@ -426,7 +429,6 @@ function cleanupRoomState() {
     isHost = false;
     userRole = "viewer";
     myParticipantEntry = null;
-    isLocalUpdating = false;
     
     updateControlPermissions();
     
@@ -442,6 +444,7 @@ function cleanupRoomState() {
 function resetMatchStateOnly() {
     if (timerInterval) clearInterval(timerInterval);
     matchState = {
+        version: 0,
         p1PointsIndex: 0, p2PointsIndex: 0, p1Games: 0, p2Games: 0,
         p1Sets: [], p2Sets: [], server: 1, isTiebreak: false,
         p1TBPoints: 0, p2TBPoints: 0, isFinished: false, isStarted: false,
@@ -455,9 +458,8 @@ function resetMatchStateOnly() {
 
 function syncRoom() {
     if (currentRoomCode && (isHost || userRole === "p1" || userRole === "p2")) {
-        // Устанавливаем защиту на 1500мс (1.5 секунды) от входящих сетевых эхо-ответов
-        isLocalUpdating = true;
-        setTimeout(() => { isLocalUpdating = false; }, 1500);
+        // Увеличиваем версию при каждом локальном действии перед отправкой в базу
+        matchState.version++;
 
         db.collection("rooms").doc(currentRoomCode).set({
             state: matchState,
@@ -465,7 +467,6 @@ function syncRoom() {
             p2Name: p2NameInput.value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true }).catch(err => {
-            isLocalUpdating = false;
             console.error("Ошибка синхронизации:", err);
         });
     }
@@ -483,6 +484,7 @@ let settings = {
 };
 
 let matchState = {
+    version: 0,
     p1PointsIndex: 0,
     p2PointsIndex: 0,
     p1Games: 0,
@@ -779,6 +781,7 @@ function resetMatch() {
     if (timerInterval) clearInterval(timerInterval);
     
     matchState = {
+        version: matchState.version + 1,
         p1PointsIndex: 0, p2PointsIndex: 0, p1Games: 0, p2Games: 0,
         p1Sets: [], p2Sets: [], server: 1, isTiebreak: false,
         p1TBPoints: 0, p2TBPoints: 0, isFinished: false, isStarted: false,
