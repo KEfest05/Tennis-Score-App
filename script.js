@@ -17,6 +17,8 @@ let currentUser = null;
 let currentNick = "";
 let currentRoomCode = null;
 let isHost = false;
+let userRole = "viewer"; // "host", "p1", "p2", "viewer"
+let pendingRoomCode = null;
 let unsubscribeRoom = null;
 
 // Переключение формы входа на форму регистрации
@@ -197,70 +199,112 @@ function loadUserProfileAndMatches() {
         });
 }
 
-// --- УПРАВЛЕНИЕ КОМНАТАМИ И СИНХРОНИЗАЦИЯ ---
+// --- УПРАВЛЕНИЕ КОМНАТАМИ И РОЛЯМИ ---
 document.getElementById('createRoomBtn').onclick = () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     currentRoomCode = code;
     isHost = true;
+    userRole = "host";
 
-    if (currentNick) {
-        p1NameInput.value = currentNick;
-    }
-
-    const participantName = currentNick || authEmail?.value || "Судья";
+    const hostName = currentNick || "Судья";
 
     db.collection("rooms").doc(code).set({
         state: matchState,
         p1Name: p1NameInput.value,
         p2Name: p2NameInput.value,
-        participants: [participantName],
+        player1Id: null,
+        player2Id: null,
+        participants: [hostName + " (Судья)"],
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
         document.getElementById('roomControls').style.display = 'none';
         document.getElementById('roomActiveInfo').style.display = 'block';
         document.getElementById('displayRoomCode').textContent = code;
         document.getElementById('roomRoleText').textContent = "Вы — Судья (Хозяин комнаты)";
-        document.getElementById('roomParticipantsList').textContent = participantName + " (Судья)";
-
-        // Подписываемся на комнату, чтобы видеть подключение гостей
         subscribeToRoom(code);
     }).catch(err => alert("Ошибка создания комнаты: " + err.message));
 };
 
-document.getElementById('joinRoomBtn').onclick = () => {
+document.getElementById('checkRoomBtn').onclick = () => {
     const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
     if (!code) return alert("Введите код комнаты!");
-
-    currentRoomCode = code;
-    isHost = false;
 
     db.collection("rooms").doc(code).get().then(doc => {
         if (!doc.exists) {
             alert("Комната не найдена!");
-            currentRoomCode = null;
             return;
         }
+        pendingRoomCode = code;
+        document.getElementById('roomControls').style.display = 'none';
+        document.getElementById('roomRoleSelection').style.display = 'block';
+    }).catch(err => alert("Ошибка: " + err.message));
+};
 
-        const roomData = doc.data();
-        let participants = roomData.participants || [];
-        const myName = currentNick || "Гость";
-        if (!participants.includes(myName)) {
-            participants.push(myName);
+document.getElementById('backToRoomCodeBtn').onclick = () => {
+    document.getElementById('roomRoleSelection').style.display = 'none';
+    document.getElementById('roomControls').style.display = 'block';
+    pendingRoomCode = null;
+};
+
+document.getElementById('selectRoleP1').onclick = () => joinAsRole("p1");
+document.getElementById('selectRoleP2').onclick = () => joinAsRole("p2");
+document.getElementById('selectRoleViewer').onclick = () => joinAsRole("viewer");
+
+function joinAsRole(role) {
+    if (!currentUser && role !== "viewer") {
+        alert("Для участия в качестве игрока необходимо войти в аккаунт!");
+        authModal.classList.add('active');
+        return;
+    }
+
+    currentRoomCode = pendingRoomCode;
+    userRole = role;
+    isHost = false;
+
+    db.collection("rooms").doc(currentRoomCode).get().then(doc => {
+        const data = doc.data();
+        let p1Name = data.p1Name;
+        let p2Name = data.p2Name;
+        let p1Id = data.player1Id;
+        let p2Id = data.player2Id;
+        const myName = currentNick || (currentUser ? currentUser.email : "Зритель");
+
+        if (role === "p1") {
+            if (p1Id && p1Id !== currentUser.uid) {
+                alert("Место Игрока 1 уже занято другим игроком!");
+                return;
+            }
+            p1Id = currentUser.uid;
+            p1Name = currentNick;
+        } else if (role === "p2") {
+            if (p2Id && p2Id !== currentUser.uid) {
+                alert("Место Игрока 2 уже занято другим игроком!");
+                return;
+            }
+            p2Id = currentUser.uid;
+            p2Name = currentNick;
         }
 
-        // Обновляем список участников в базе при входе
-        db.collection("rooms").doc(code).update({
+        let participants = data.participants || [];
+        const roleLabel = role === "p1" ? " (Игрок 1)" : role === "p2" ? " (Игрок 2)" : " (Зритель)";
+        const myEntry = myName + roleLabel;
+        if (!participants.includes(myEntry)) participants.push(myEntry);
+
+        db.collection("rooms").doc(currentRoomCode).update({
+            p1Name: p1Name,
+            p2Name: p2Name,
+            player1Id: p1Id,
+            player2Id: p2Id,
             participants: participants
+        }).then(() => {
+            document.getElementById('roomRoleSelection').style.display = 'none';
+            document.getElementById('roomActiveInfo').style.display = 'block';
+            document.getElementById('displayRoomCode').textContent = currentRoomCode;
+            document.getElementById('roomRoleText').textContent = role === "viewer" ? "Вы — Зритель" : `Вы играете как ${currentNick}`;
+            subscribeToRoom(currentRoomCode);
         });
-
-        document.getElementById('roomControls').style.display = 'none';
-        document.getElementById('roomActiveInfo').style.display = 'block';
-        document.getElementById('displayRoomCode').textContent = code;
-        document.getElementById('roomRoleText').textContent = "Вы — Зритель / Подключенный участник";
-
-        subscribeToRoom(code);
-    }).catch(err => alert("Ошибка подключения: " + err.message));
-};
+    });
+}
 
 function subscribeToRoom(code) {
     if (unsubscribeRoom) unsubscribeRoom();
@@ -273,9 +317,8 @@ function subscribeToRoom(code) {
             p2NameInput.value = data.p2Name;
             updateUI();
 
-            // Отображаем список участников в модальном окне
             if (data.participants) {
-                document.getElementById('roomParticipantsList').innerHTML = data.participants.join('<br>');
+                document.getElementById('roomPlayersList').innerHTML = data.participants.join('<br>');
             }
         }
     });
@@ -285,14 +328,16 @@ document.getElementById('leaveRoomBtn').onclick = () => {
     if (unsubscribeRoom) unsubscribeRoom();
     currentRoomCode = null;
     isHost = false;
+    userRole = "viewer";
     document.getElementById('roomControls').style.display = 'block';
     document.getElementById('roomActiveInfo').style.display = 'none';
+    document.getElementById('roomRoleSelection').style.display = 'none';
     document.getElementById('roomCodeInput').value = '';
     alert("Вы покинули комнату");
 };
 
 function syncRoom() {
-    if (currentRoomCode && isHost) {
+    if (currentRoomCode && (isHost || userRole === "p1" || userRole === "p2")) {
         db.collection("rooms").doc(currentRoomCode).set({
             state: matchState,
             p1Name: p1NameInput.value,
@@ -302,7 +347,6 @@ function syncRoom() {
     }
 }
 
-// Автосинхронизация изменения имен в полях ввода
 p1NameInput.oninput = () => { syncRoom(); };
 p2NameInput.oninput = () => { syncRoom(); };
 
@@ -343,6 +387,8 @@ let history = [];
 const micBtn = document.getElementById('micBtn');
 const statusText = document.getElementById('statusText');
 const lastCommand = document.getElementById('lastCommand');
+const p1NameInput = document.getElementById('p1Name');
+const p2NameInput = document.getElementById('p2Name');
 const p1PointsEl = document.getElementById('p1Points');
 const p2PointsEl = document.getElementById('p2Points');
 const p1GamesEl = document.getElementById('p1Games');
@@ -416,7 +462,11 @@ function speak(text) {
 }
 
 function toggleMatchState() {
-    if (matchState.isFinished || (!isHost && currentRoomCode)) return;
+    if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") {
+        alert("Зрители не могут управлять матчем!");
+        return;
+    }
+    if (matchState.isFinished) return;
 
     if (!matchState.isStarted || matchState.isPaused) {
         matchState.isStarted = true;
@@ -456,7 +506,8 @@ function toggleMatchState() {
 }
 
 function finishMatch() {
-    if (matchState.isFinished || (!isHost && currentRoomCode)) return;
+    if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") return;
+    if (matchState.isFinished) return;
     matchState.isFinished = true;
     matchState.isPaused = false;
     if (timerInterval) clearInterval(timerInterval);
@@ -494,7 +545,8 @@ function saveHistory() {
 }
 
 function undoLast() {
-    if (matchState.isFinished || (!isHost && currentRoomCode)) return;
+    if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") return;
+    if (matchState.isFinished) return;
     if (history.length > 0) {
         matchState = history.pop();
         updateUI();
@@ -505,11 +557,20 @@ function undoLast() {
 }
 
 function addPoint(player) {
-    if (matchState.isFinished || (!isHost && currentRoomCode)) return;
+    if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") {
+        alert("Зрители не могут начислять очки!");
+        return;
+    }
+
+    if (matchState.isFinished) return;
     
     if (!matchState.isStarted || matchState.isPaused) {
-        toggleMatchState();
-        return;
+        matchState.isStarted = true;
+        matchState.isPaused = false;
+        matchState.startTime = Date.now() - (matchState.elapsedSeconds * 1000);
+        matchBadge.className = "match-status-badge active";
+        startPauseBtn.textContent = "⏸️ Пауза";
+        startPauseBtn.className = "btn btn-yellow";
     }
 
     saveHistory();
@@ -591,7 +652,7 @@ function winSet(player) {
 }
 
 function toggleServer(userAction = true) {
-    if (!isHost && currentRoomCode) return;
+    if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") return;
     matchState.server = matchState.server === 1 ? 2 : 1;
     updateUI();
     syncRoom();
@@ -599,7 +660,7 @@ function toggleServer(userAction = true) {
 }
 
 function resetMatch() {
-    if (!isHost && currentRoomCode) return;
+    if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") return;
     if (timerInterval) clearInterval(timerInterval);
     matchState = {
         p1PointsIndex: 0, p2PointsIndex: 0, p1Games: 0, p2Games: 0,
@@ -706,7 +767,7 @@ if (SpeechRecognition) {
 }
 
 function processVoiceCommand(text) {
-    if (currentRoomCode && !isHost) return;
+    if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") return;
     const p1Name = p1NameInput.value.toLowerCase();
     const p2Name = p2NameInput.value.toLowerCase();
 
