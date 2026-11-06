@@ -147,7 +147,6 @@ function loadUserProfileAndMatches() {
     const historyListContainer = document.getElementById('matchesHistoryList');
     historyListContainer.innerHTML = "Загрузка истории...";
 
-    // Загружаем матчи только по фильтру userId (без .orderBy), чтобы не требовать индексов в Firestore
     db.collection("matches")
         .where("userId", "==", currentUser.uid)
         .get()
@@ -160,19 +159,15 @@ function loadUserProfileAndMatches() {
                 return;
             }
 
-            // Собираем данные в массив и сортируем их по дате (сначала новые) прямо в JavaScript
             let matches = [];
-            querySnapshot.forEach((doc) => {
-                matches.push(doc.data());
-            });
+            querySnapshot.forEach((doc) => { matches.push(doc.data()); });
 
             matches.sort((a, b) => {
                 const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
                 const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
-                return timeB - timeA; // От новых к старым
+                return timeB - timeA;
             });
 
-            // Рендерим отсортированный список на экран
             matches.forEach((match) => {
                 const date = match.timestamp ? match.timestamp.toDate().toLocaleDateString('ru-RU') : "Недавно";
                 const mins = Math.floor((match.durationSeconds || 0) / 60);
@@ -202,8 +197,7 @@ function loadUserProfileAndMatches() {
         });
 }
 
-
-// --- УПРАВЛЕНИЕ КОМНАТАМИ ---
+// --- УПРАВЛЕНИЕ КОМНАТАМИ И СИНХРОНИЗАЦИЯ ---
 document.getElementById('createRoomBtn').onclick = () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     currentRoomCode = code;
@@ -213,16 +207,23 @@ document.getElementById('createRoomBtn').onclick = () => {
         p1NameInput.value = currentNick;
     }
 
+    const participantName = currentNick || authEmail?.value || "Судья";
+
     db.collection("rooms").doc(code).set({
         state: matchState,
         p1Name: p1NameInput.value,
         p2Name: p2NameInput.value,
+        participants: [participantName],
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
         document.getElementById('roomControls').style.display = 'none';
         document.getElementById('roomActiveInfo').style.display = 'block';
         document.getElementById('displayRoomCode').textContent = code;
         document.getElementById('roomRoleText').textContent = "Вы — Судья (Хозяин комнаты)";
+        document.getElementById('roomParticipantsList').textContent = participantName + " (Судья)";
+
+        // Подписываемся на комнату, чтобы видеть подключение гостей
+        subscribeToRoom(code);
     }).catch(err => alert("Ошибка создания комнаты: " + err.message));
 };
 
@@ -240,22 +241,45 @@ document.getElementById('joinRoomBtn').onclick = () => {
             return;
         }
 
+        const roomData = doc.data();
+        let participants = roomData.participants || [];
+        const myName = currentNick || "Гость";
+        if (!participants.includes(myName)) {
+            participants.push(myName);
+        }
+
+        // Обновляем список участников в базе при входе
+        db.collection("rooms").doc(code).update({
+            participants: participants
+        });
+
         document.getElementById('roomControls').style.display = 'none';
         document.getElementById('roomActiveInfo').style.display = 'block';
         document.getElementById('displayRoomCode').textContent = code;
-        document.getElementById('roomRoleText').textContent = "Вы — Зритель / Подключенный игрок";
+        document.getElementById('roomRoleText').textContent = "Вы — Зритель / Подключенный участник";
 
-        unsubscribeRoom = db.collection("rooms").doc(code).onSnapshot(docSnap => {
-            if (docSnap.exists) {
-                const data = docSnap.data();
-                matchState = data.state;
-                p1NameInput.value = data.p1Name;
-                p2NameInput.value = data.p2Name;
-                updateUI();
-            }
-        });
+        subscribeToRoom(code);
     }).catch(err => alert("Ошибка подключения: " + err.message));
 };
+
+function subscribeToRoom(code) {
+    if (unsubscribeRoom) unsubscribeRoom();
+
+    unsubscribeRoom = db.collection("rooms").doc(code).onSnapshot(docSnap => {
+        if (docSnap.exists) {
+            const data = docSnap.data();
+            matchState = data.state;
+            p1NameInput.value = data.p1Name;
+            p2NameInput.value = data.p2Name;
+            updateUI();
+
+            // Отображаем список участников в модальном окне
+            if (data.participants) {
+                document.getElementById('roomParticipantsList').innerHTML = data.participants.join('<br>');
+            }
+        }
+    });
+}
 
 document.getElementById('leaveRoomBtn').onclick = () => {
     if (unsubscribeRoom) unsubscribeRoom();
@@ -274,9 +298,13 @@ function syncRoom() {
             p1Name: p1NameInput.value,
             p2Name: p2NameInput.value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(err => console.error("Ошибка синхронизации:", err));
+        }, { merge: true }).catch(err => console.error("Ошибка синхронизации:", err));
     }
 }
+
+// Автосинхронизация изменения имен в полях ввода
+p1NameInput.oninput = () => { syncRoom(); };
+p2NameInput.oninput = () => { syncRoom(); };
 
 
 // --- ОСНОВНАЯ ЛОГИКА ТЕННИСНОГО АРБИТРА ---
@@ -315,8 +343,6 @@ let history = [];
 const micBtn = document.getElementById('micBtn');
 const statusText = document.getElementById('statusText');
 const lastCommand = document.getElementById('lastCommand');
-const p1NameInput = document.getElementById('p1Name');
-const p2NameInput = document.getElementById('p2Name');
 const p1PointsEl = document.getElementById('p1Points');
 const p2PointsEl = document.getElementById('p2Points');
 const p1GamesEl = document.getElementById('p1Games');
