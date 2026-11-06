@@ -332,6 +332,8 @@ function subscribeToRoom(code) {
     unsubscribeRoom = db.collection("rooms").doc(code).onSnapshot(docSnap => {
         if (docSnap.exists) {
             const data = docSnap.data();
+            const wasFinished = matchState.isFinished;
+
             if (data.state) {
                 matchState = data.state;
                 updateUI();
@@ -341,6 +343,11 @@ function subscribeToRoom(code) {
 
             if (data.participants) {
                 document.getElementById('roomPlayersList').innerHTML = data.participants.join('<br>');
+            }
+
+            if (matchState.isFinished && !wasFinished) {
+                updateStatsDisplay();
+                statsModal.classList.add('active');
             }
         }
     });
@@ -507,6 +514,7 @@ function toggleMatchState() {
 function finishMatch() {
     if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") return;
     if (matchState.isFinished) return;
+    
     matchState.isFinished = true;
     matchState.isPaused = false;
     if (timerInterval) clearInterval(timerInterval);
@@ -516,9 +524,11 @@ function finishMatch() {
 
     playBeep(400, 300);
     speak("Матч завершен!");
+    
     syncRoom();
 
-    if (currentUser && (isHost || userRole === "p1")) {
+    // Сохраняем матч в историю каждому авторизованному участнику
+    if (currentUser) {
         db.collection("matches").add({
             userId: currentUser.uid,
             player1: p1NameInput.value,
@@ -529,7 +539,7 @@ function finishMatch() {
             p2PointsWon: matchState.p2TotalPointsWon,
             durationSeconds: matchState.elapsedSeconds,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(err => console.error(err));
+        }).catch(err => console.error("Ошибка сохранения матча:", err));
     }
 
     updateStatsDisplay();
@@ -750,6 +760,34 @@ function announceScore() {
     else if (p2 === "АД") speak(`Больше ${p2Name}`);
     else speak(`${p1}, ${p2}`);
 }
+
+// --- УПРАВЛЕНИЕ БЛОКИРОВКОЙ ЭКРАНА (Wake Lock API) ---
+let wakeLock = null;
+
+async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => {
+                wakeLock = null;
+            });
+        } catch (err) {
+            console.error(`${err.name}, ${err.message}`);
+        }
+    }
+}
+
+document.addEventListener('click', () => {
+    if (!wakeLock && document.visibilityState === 'visible') {
+        requestWakeLock();
+    }
+}, { once: true });
+
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock === null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+    }
+});
 
 // --- ГОЛОСОВОЕ УПРАВЛЕНИЕ ---
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
