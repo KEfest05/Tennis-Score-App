@@ -25,12 +25,35 @@
         </div>
 
         <div class="header-btns">
+            <button class="icon-btn" id="openRoom" title="Онлайн комнаты">🌐</button>
             <button class="icon-btn" id="openAuth" title="Аккаунт и синхронизация">👤</button>
             <button class="icon-btn" id="openStats" title="Статистика матча">📊</button>
             <button class="icon-btn" id="fullscreenBtn" title="На весь экран">⛶</button>
             <button class="icon-btn" id="openSettings" title="Настройки">⚙️</button>
         </div>
     </header>
+
+    <!-- Модальное окно комнат -->
+    <div class="modal" id="roomModal">
+        <div class="modal-content">
+            <h3>🌐 Онлайн комнаты</h3>
+            <div id="roomControls">
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Создайте комнату для трансляции счета или введите код для подключения с другого телефона.</p>
+                <button class="btn btn-green" id="createRoomBtn" style="width: 100%; margin-bottom: 15px;">Создать комнату (Я судья)</button>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="roomCodeInput" placeholder="Код комнаты" class="player-name-input" style="flex: 1; margin-bottom: 0; font-size: 1rem; text-transform: uppercase;">
+                    <button class="btn btn-blue" id="joinRoomBtn">Войти</button>
+                </div>
+            </div>
+            <div id="roomActiveInfo" style="display: none; text-align: center;">
+                <p style="margin-bottom: 5px; color: var(--text-muted);">Код комнаты:</p>
+                <strong id="displayRoomCode" style="color: var(--accent-yellow); font-size: 1.5rem; letter-spacing: 2px;"></strong>
+                <p id="roomRoleText" style="color: var(--accent-green); font-size: 0.95rem; margin: 10px 0;"></p>
+                <button class="btn" style="background-color: var(--accent-red); width: 100%; margin-top: 10px;" id="leaveRoomBtn">Покинуть комнату</button>
+            </div>
+            <button class="btn btn-blue" id="closeRoom" style="margin-top: 15px;">Закрыть</button>
+        </div>
+    </div>
 
     <!-- Модальное окно авторизации / профиля -->
     <div class="modal" id="authModal">
