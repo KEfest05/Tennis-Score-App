@@ -354,7 +354,7 @@ function subscribeToRoom(code) {
             const data = docSnap.data();
             const wasFinished = matchState.isFinished;
 
-            // Защита от сетевого отката: не применяем снимок сервера, если только что локально изменили счет
+            // Игнорируем входящие сетевые обновления, если только что локально изменили счет (защита на 1.5с)
             if (data.state && !isLocalUpdating) {
                 matchState = data.state;
                 updateUI();
@@ -455,9 +455,9 @@ function resetMatchStateOnly() {
 
 function syncRoom() {
     if (currentRoomCode && (isHost || userRole === "p1" || userRole === "p2")) {
-        // Устанавливаем защиту на 600мс от входящих сетевых перезаписей
+        // Устанавливаем защиту на 1500мс (1.5 секунды) от входящих сетевых эхо-ответов
         isLocalUpdating = true;
-        setTimeout(() => { isLocalUpdating = false; }, 600);
+        setTimeout(() => { isLocalUpdating = false; }, 1500);
 
         db.collection("rooms").doc(currentRoomCode).set({
             state: matchState,
