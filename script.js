@@ -378,30 +378,39 @@ document.getElementById('leaveRoomBtn').onclick = () => {
 };
 
 function leaveCurrentRoom() {
-    if (currentRoomCode) {
-        db.collection("rooms").doc(currentRoomCode).get().then(doc => {
-            if (doc.exists) {
-                const data = doc.data();
-                let participants = data.participants || [];
-
-                if (myParticipantEntry) {
-                    participants = participants.filter(p => p !== myParticipantEntry);
-                }
-
-                let updateData = { participants: participants };
-                if (userRole === "p1") {
-                    updateData.player1Id = null;
-                    updateData.p1Name = "Игрок 1";
-                } else if (userRole === "p2") {
-                    updateData.player2Id = null;
-                    updateData.p2Name = "Игрок 2";
-                }
-
-                db.collection("rooms").doc(currentRoomCode).update(updateData).catch(err => console.log(err));
-            }
-        });
+    if (currentRoomCode && myParticipantEntry) {
+        let updateData = {
+            participants: firebase.firestore.FieldValue.arrayRemove(myParticipantEntry)
+        };
+        if (userRole === "p1") {
+            updateData.player1Id = null;
+            updateData.p1Name = "Игрок 1";
+        } else if (userRole === "p2") {
+            updateData.player2Id = null;
+            updateData.p2Name = "Игрок 2";
+        }
+        db.collection("rooms").doc(currentRoomCode).update(updateData).catch(err => console.log(err));
     }
 
+    cleanupRoomState();
+    alert("Вы покинули комнату");
+}
+
+window.addEventListener('beforeunload', () => {
+    if (currentRoomCode && myParticipantEntry) {
+        let updateData = {
+            participants: firebase.firestore.FieldValue.arrayRemove(myParticipantEntry)
+        };
+        if (userRole === "p1") {
+            updateData.player1Id = null;
+        } else if (userRole === "p2") {
+            updateData.player2Id = null;
+        }
+        db.collection("rooms").doc(currentRoomCode).update(updateData).catch(() => {});
+    }
+});
+
+function cleanupRoomState() {
     if (unsubscribeRoom) unsubscribeRoom();
     currentRoomCode = null;
     isHost = false;
@@ -415,7 +424,6 @@ function leaveCurrentRoom() {
     
     resetMatchStateOnly();
     updateUI();
-    alert("Вы покинули комнату");
 }
 
 function resetMatchStateOnly() {
