@@ -38,26 +38,42 @@
     <div class="modal" id="roomModal">
         <div class="modal-content">
             <h3>🌐 Онлайн комнаты</h3>
+            
+            <!-- Шаг 1: Создание или ввод кода -->
             <div id="roomControls">
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Создайте комнату для трансляции счета или введите код для подключения с другого телефона.</p>
-                <button class="btn btn-green" id="createRoomBtn" style="width: 100%; margin-bottom: 15px;">Создать комнату (Я судья)</button>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Создайте комнату или введите код для подключения.</p>
+                <button class="btn btn-green" id="createRoomBtn" style="width: 100%; margin-bottom: 15px;">Создать комнату (Судья)</button>
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="roomCodeInput" placeholder="Код комнаты" class="player-name-input" style="flex: 1; margin-bottom: 0; font-size: 1rem; text-transform: uppercase;">
-                    <button class="btn btn-blue" id="joinRoomBtn">Войти</button>
+                    <button class="btn btn-blue" id="checkRoomBtn">Войти</button>
                 </div>
             </div>
+
+            <!-- Шаг 1.1: Выбор роли при входе (для гостей) -->
+            <div id="roomRoleSelection" style="display: none; text-align: center;">
+                <p style="margin-bottom: 10px; color: var(--text-muted);">Выберите вашу роль в комнате:</p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn btn-green" id="selectRoleP1">🎾 Занять место: Игрок 1</button>
+                    <button class="btn btn-yellow" id="selectRoleP2">🎾 Занять место: Игрок 2</button>
+                    <button class="btn btn-blue" id="selectRoleViewer">👀 Зайти как Зритель</button>
+                </div>
+                <button class="btn" style="background-color: #334155; width: 100%; margin-top: 10px;" id="backToRoomCodeBtn">Назад</button>
+            </div>
+
+            <!-- Шаг 2: Активная комната (для хоста и участников) -->
             <div id="roomActiveInfo" style="display: none; text-align: center;">
                 <p style="margin-bottom: 5px; color: var(--text-muted);">Код комнаты:</p>
                 <strong id="displayRoomCode" style="color: var(--accent-yellow); font-size: 1.5rem; letter-spacing: 2px;"></strong>
                 <p id="roomRoleText" style="color: var(--accent-green); font-size: 0.95rem; margin: 10px 0;"></p>
                 
                 <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-top: 10px; text-align: left;">
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">👥 Подключенные участники:</p>
-                    <div id="roomParticipantsList" style="font-size: 0.9rem; color: var(--text-main);">Ожидание участников...</div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">👥 Участники в комнате:</p>
+                    <div id="roomPlayersList" style="font-size: 0.9rem; color: var(--text-main);">Ожидание участников...</div>
                 </div>
 
                 <button class="btn" style="background-color: var(--accent-red); width: 100%; margin-top: 15px;" id="leaveRoomBtn">Покинуть комнату</button>
             </div>
+
             <button class="btn btn-blue" id="closeRoom" style="margin-top: 15px;">Закрыть</button>
         </div>
     </div>
