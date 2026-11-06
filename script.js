@@ -1,3 +1,76 @@
+// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ---
+// (Замените значения ниже на конфигурацию из вашего проекта Firebase)
+const firebaseConfig = {
+    apiKey: "AIzaSyBB7kVEkjIpJF5H8oxx3TCQM_VShk7ENys",
+    authDomain: "tennis-voice-referee.firebaseapp.com",
+    projectId: "tennis-voice-referee",
+    storageBucket: "tennis-voice-referee.firebasestorage.app",
+    messagingSenderId: "538967810120",
+    appId: "1:538967810120:web:da9380fe0f87f300a9b87d",
+    measurementId: "G-3F1KWP5CRJ"
+  };
+
+// Инициализируем Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// Текущий авторизованный пользователь
+let currentUser = null;
+
+auth.onAuthStateChanged((user) => {
+    currentUser = user;
+    const authLoggedOut = document.getElementById('authLoggedOut');
+    const authLoggedIn = document.getElementById('authLoggedIn');
+    const userEmailDisplay = document.getElementById('userEmailDisplay');
+
+    if (user) {
+        authLoggedOut.style.display = 'none';
+        authLoggedIn.style.display = 'block';
+        userEmailDisplay.textContent = user.email;
+        console.log("Пользователь авторизован:", user.email);
+    } else {
+        authLoggedOut.style.display = 'block';
+        authLoggedIn.style.display = 'none';
+        console.log("Пользователь не авторизован");
+    }
+});
+
+// Управление модальным окном авторизации
+const authModal = document.getElementById('authModal');
+document.getElementById('openAuth').onclick = () => authModal.classList.add('active');
+document.getElementById('closeAuth').onclick = () => authModal.classList.remove('active');
+
+// Кнопки входа и регистрации
+document.getElementById('loginBtn').onclick = () => {
+    const email = document.getElementById('authEmail').value;
+    const password = document.getElementById('authPassword').value;
+    auth.signInWithEmailAndPassword(email, password)
+        .then(() => {
+            alert("Успешный вход!");
+            authModal.classList.remove('active');
+        })
+        .catch((error) => alert("Ошибка входа: " + error.message));
+};
+
+document.getElementById('registerBtn').onclick = () => {
+    const email = document.getElementById('authEmail').value;
+    const password = document.getElementById('authPassword').value;
+    auth.createUserWithEmailAndPassword(email, password)
+        .then(() => {
+            alert("Регистрация успешна!");
+            authModal.classList.remove('active');
+        })
+        .catch((error) => alert("Ошибка регистрации: " + error.message));
+};
+
+document.getElementById('logoutBtn').onclick = () => {
+    auth.signOut().then(() => alert("Вы вышли из аккаунта"));
+};
+
+
+// --- ОСНОВНАЯ ЛОГИКА ТЕННИСНОГО АРБИТРА ---
+
 let settings = {
     ttsEnabled: localStorage.getItem('tennis_tts') !== 'false',
     continuous: localStorage.getItem('tennis_continuous') !== 'false',
@@ -134,7 +207,6 @@ function speak(text) {
     }
 }
 
-// Управление Старт / Пауза одной кнопкой
 function toggleMatchState() {
     if (matchState.isFinished) return;
 
@@ -189,6 +261,23 @@ function finishMatch() {
 
     playBeep(400, 300);
     speak("Матч завершен!");
+
+    // Сохранение статистики в Firestore, если пользователь вошел в аккаунт
+    if (currentUser) {
+        db.collection("matches").add({
+            userId: currentUser.uid,
+            player1: p1NameInput.value,
+            player2: p2NameInput.value,
+            p1Sets: matchState.p1Sets,
+            p2Sets: matchState.p2Sets,
+            p1PointsWon: matchState.p1TotalPointsWon,
+            p2PointsWon: matchState.p2TotalPointsWon,
+            durationSeconds: matchState.elapsedSeconds,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => console.log("Статистика матча сохранена в облако!"))
+        .catch((error) => console.error("Ошибка сохранения матча: ", error));
+    }
 
     updateStatsDisplay();
     statsModal.classList.add('active');
@@ -487,16 +576,13 @@ function processVoiceCommand(text) {
     const p1Name = p1NameInput.value.toLowerCase();
     const p2Name = p2NameInput.value.toLowerCase();
 
-    // Новые голосовые команды управления таймингом
     if (text.includes('старт матча') || text.includes('начать матч') || text.includes('старт')) {
         if (!matchState.isStarted || matchState.isPaused) toggleMatchState();
     } else if (text.includes('пауза') || text.includes('стоп')) {
         if (matchState.isStarted && !matchState.isPaused) toggleMatchState();
     } else if (text.includes('завершить матч') || text.includes('конец матча')) {
         finishMatch();
-    } 
-    // Стандартные команды счета
-    else if (text.includes('очко первому') || text.includes('первый') || text.includes('раз') || text.includes('очко 1') || text.includes(p1Name)) {
+    } else if (text.includes('очко первому') || text.includes('первый') || text.includes('раз') || text.includes('очко 1') || text.includes(p1Name)) {
         addPoint(1);
     } else if (text.includes('очко второму') || text.includes('второй') || text.includes('два') || text.includes('очко 2') || text.includes(p2Name)) {
         addPoint(2);
