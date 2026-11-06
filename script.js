@@ -22,6 +22,7 @@ let userRole = "viewer"; // "host", "p1", "p2", "viewer"
 let pendingRoomCode = null;
 let unsubscribeRoom = null;
 let isRegisterMode = false;
+let myParticipantEntry = null; // Точная запись текущего пользователя в списке участников
 
 // --- DOM ЭЛЕМЕНТЫ ---
 const p1NameInput = document.getElementById('p1Name');
@@ -227,6 +228,7 @@ document.getElementById('createRoomBtn').onclick = () => {
     userRole = "host";
 
     const hostName = currentNick || "Судья";
+    myParticipantEntry = hostName + " (Судья)";
 
     resetMatchStateOnly();
 
@@ -236,7 +238,7 @@ document.getElementById('createRoomBtn').onclick = () => {
         p2Name: p2NameInput.value,
         player1Id: null,
         player2Id: null,
-        participants: [hostName + " (Судья)"],
+        participants: [myParticipantEntry],
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
         document.getElementById('roomControls').style.display = 'none';
@@ -310,12 +312,14 @@ function joinAsRole(role) {
         }
 
         let participants = data.participants || [];
-        const roleLabel = role === "p1" ? " (Игрок 1)" : role === "p2" ? " (Игрок 2)" : " (Зритель)";
-        const myEntry = myName + roleLabel;
         
-        if (!participants.includes(myEntry)) {
-            participants.push(myEntry);
-        }
+        // Удаляем старые записи этого пользователя по имени, чтобы не было дублей
+        participants = participants.filter(p => !p.startsWith(myName));
+
+        const roleLabel = role === "p1" ? " (Игрок 1)" : role === "p2" ? " (Игрок 2)" : " (Зритель)";
+        myParticipantEntry = myName + roleLabel;
+        
+        participants.push(myParticipantEntry);
 
         db.collection("rooms").doc(currentRoomCode).update({
             p1Name: p1Name,
@@ -379,11 +383,10 @@ function leaveCurrentRoom() {
             if (doc.exists) {
                 const data = doc.data();
                 let participants = data.participants || [];
-                const myName = currentNick || (currentUser ? currentUser.email : "Гость");
-                const roleLabel = userRole === "p1" ? " (Игрок 1)" : userRole === "p2" ? " (Игрок 2)" : userRole === "host" ? " (Судья)" : " (Зритель)";
-                const myEntry = myName + roleLabel;
 
-                participants = participants.filter(p => p !== myEntry);
+                if (myParticipantEntry) {
+                    participants = participants.filter(p => p !== myParticipantEntry);
+                }
 
                 let updateData = { participants: participants };
                 if (userRole === "p1") {
@@ -403,6 +406,8 @@ function leaveCurrentRoom() {
     currentRoomCode = null;
     isHost = false;
     userRole = "viewer";
+    myParticipantEntry = null;
+    
     document.getElementById('roomControls').style.display = 'block';
     document.getElementById('roomActiveInfo').style.display = 'none';
     document.getElementById('roomRoleSelection').style.display = 'none';
