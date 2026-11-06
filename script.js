@@ -284,6 +284,8 @@ function joinAsRole(role) {
     isHost = false;
 
     db.collection("rooms").doc(currentRoomCode).get().then(doc => {
+        if (!doc.exists) return alert("Комната не найдена!");
+        
         const data = doc.data();
         let p1Name = data.p1Name;
         let p2Name = data.p2Name;
@@ -310,7 +312,10 @@ function joinAsRole(role) {
         let participants = data.participants || [];
         const roleLabel = role === "p1" ? " (Игрок 1)" : role === "p2" ? " (Игрок 2)" : " (Зритель)";
         const myEntry = myName + roleLabel;
-        if (!participants.includes(myEntry)) participants.push(myEntry);
+        
+        if (!participants.includes(myEntry)) {
+            participants.push(myEntry);
+        }
 
         db.collection("rooms").doc(currentRoomCode).update({
             p1Name: p1Name,
@@ -343,8 +348,13 @@ function subscribeToRoom(code) {
             if (data.p1Name) p1NameInput.value = data.p1Name;
             if (data.p2Name) p2NameInput.value = data.p2Name;
 
-            if (data.participants) {
-                document.getElementById('roomPlayersList').innerHTML = data.participants.join('<br>');
+            if (data.participants && Array.isArray(data.participants)) {
+                const playersListEl = document.getElementById('roomPlayersList');
+                if (playersListEl) {
+                    playersListEl.innerHTML = data.participants.length > 0 
+                        ? data.participants.join('<br>') 
+                        : "Ожидание участников...";
+                }
             }
 
             if (matchState.isFinished && !wasFinished) {
