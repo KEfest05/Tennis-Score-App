@@ -345,7 +345,12 @@ function subscribeToRoom(code) {
                 document.getElementById('roomPlayersList').innerHTML = data.participants.join('<br>');
             }
 
+            // Если матч завершился на другом устройстве, авторизованные участники сохраняют его в личный кабинет
             if (matchState.isFinished && !wasFinished) {
+                if (currentUser && (userRole === "p1" || userRole === "p2" || isHost)) {
+                    saveMatchToPersonalHistory();
+                }
+
                 updateStatsDisplay();
                 statsModal.classList.add('active');
             }
@@ -527,23 +532,31 @@ function finishMatch() {
     
     syncRoom();
 
-    // Сохраняем матч в историю каждому авторизованному участнику
-    if (currentUser) {
-        db.collection("matches").add({
-            userId: currentUser.uid,
-            player1: p1NameInput.value,
-            player2: p2NameInput.value,
-            p1Sets: matchState.p1Sets,
-            p2Sets: matchState.p2Sets,
-            p1PointsWon: matchState.p1TotalPointsWon,
-            p2PointsWon: matchState.p2TotalPointsWon,
-            durationSeconds: matchState.elapsedSeconds,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(err => console.error("Ошибка сохранения матча:", err));
-    }
+    // Сохраняем матч в личный кабинет текущего пользователя
+    saveMatchToPersonalHistory();
 
     updateStatsDisplay();
     statsModal.classList.add('active');
+}
+
+function saveMatchToPersonalHistory() {
+    if (!currentUser) return;
+
+    const matchData = {
+        userId: currentUser.uid,
+        player1: p1NameInput.value,
+        player2: p2NameInput.value,
+        p1Sets: matchState.p1Sets,
+        p2Sets: matchState.p2Sets,
+        p1PointsWon: matchState.p1TotalPointsWon,
+        p2PointsWon: matchState.p2TotalPointsWon,
+        durationSeconds: matchState.elapsedSeconds,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    db.collection("matches").add(matchData)
+        .then(() => console.log("Матч успешно сохранен в личный кабинет!"))
+        .catch(err => console.error("Ошибка сохранения матча в историю:", err));
 }
 
 function saveHistory() {
