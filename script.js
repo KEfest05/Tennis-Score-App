@@ -228,6 +228,8 @@ document.getElementById('createRoomBtn').onclick = () => {
 
     const hostName = currentNick || "Судья";
 
+    resetMatchStateOnly();
+
     db.collection("rooms").doc(code).set({
         state: matchState,
         p1Name: p1NameInput.value,
@@ -358,6 +360,35 @@ function subscribeToRoom(code) {
 }
 
 document.getElementById('leaveRoomBtn').onclick = () => {
+    leaveCurrentRoom();
+};
+
+function leaveCurrentRoom() {
+    if (currentRoomCode) {
+        db.collection("rooms").doc(currentRoomCode).get().then(doc => {
+            if (doc.exists) {
+                const data = doc.data();
+                let participants = data.participants || [];
+                const myName = currentNick || (currentUser ? currentUser.email : "Гость");
+                const roleLabel = userRole === "p1" ? " (Игрок 1)" : userRole === "p2" ? " (Игрок 2)" : userRole === "host" ? " (Судья)" : " (Зритель)";
+                const myEntry = myName + roleLabel;
+
+                participants = participants.filter(p => p !== myEntry);
+
+                let updateData = { participants: participants };
+                if (userRole === "p1") {
+                    updateData.player1Id = null;
+                    updateData.p1Name = "Игрок 1";
+                } else if (userRole === "p2") {
+                    updateData.player2Id = null;
+                    updateData.p2Name = "Игрок 2";
+                }
+
+                db.collection("rooms").doc(currentRoomCode).update(updateData).catch(err => console.log(err));
+            }
+        });
+    }
+
     if (unsubscribeRoom) unsubscribeRoom();
     currentRoomCode = null;
     isHost = false;
@@ -366,8 +397,25 @@ document.getElementById('leaveRoomBtn').onclick = () => {
     document.getElementById('roomActiveInfo').style.display = 'none';
     document.getElementById('roomRoleSelection').style.display = 'none';
     document.getElementById('roomCodeInput').value = '';
+    
+    resetMatchStateOnly();
+    updateUI();
     alert("Вы покинули комнату");
-};
+}
+
+function resetMatchStateOnly() {
+    if (timerInterval) clearInterval(timerInterval);
+    matchState = {
+        p1PointsIndex: 0, p2PointsIndex: 0, p1Games: 0, p2Games: 0,
+        p1Sets: [], p2Sets: [], server: 1, isTiebreak: false,
+        p1TBPoints: 0, p2TBPoints: 0, isFinished: false, isStarted: false,
+        isPaused: false, startTime: null, elapsedSeconds: 0,
+        p1TotalPointsWon: 0, p2TotalPointsWon: 0, totalPointsPlayed: 0,
+        badgeClass: "match-status-badge",
+        statusText: "Ожидание старта матча"
+    };
+    history = [];
+}
 
 function syncRoom() {
     if (currentRoomCode && (isHost || userRole === "p1" || userRole === "p2")) {
