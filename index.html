@@ -50,7 +50,13 @@
                 <p style="margin-bottom: 5px; color: var(--text-muted);">Код комнаты:</p>
                 <strong id="displayRoomCode" style="color: var(--accent-yellow); font-size: 1.5rem; letter-spacing: 2px;"></strong>
                 <p id="roomRoleText" style="color: var(--accent-green); font-size: 0.95rem; margin: 10px 0;"></p>
-                <button class="btn" style="background-color: var(--accent-red); width: 100%; margin-top: 10px;" id="leaveRoomBtn">Покинуть комнату</button>
+                
+                <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-top: 10px; text-align: left;">
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">👥 Подключенные участники:</p>
+                    <div id="roomParticipantsList" style="font-size: 0.9rem; color: var(--text-main);">Ожидание участников...</div>
+                </div>
+
+                <button class="btn" style="background-color: var(--accent-red); width: 100%; margin-top: 15px;" id="leaveRoomBtn">Покинуть комнату</button>
             </div>
             <button class="btn btn-blue" id="closeRoom" style="margin-top: 15px;">Закрыть</button>
         </div>
