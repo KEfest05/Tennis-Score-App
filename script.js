@@ -23,7 +23,7 @@ let pendingRoomCode = null;
 let unsubscribeRoom = null;
 let isRegisterMode = false;
 
-// --- DOM ЭЛЕМЕНТЫ (объявлены в начале для избежания ошибок инициализации) ---
+// --- DOM ЭЛЕМЕНТЫ ---
 const p1NameInput = document.getElementById('p1Name');
 const p2NameInput = document.getElementById('p2Name');
 const authNickname = document.getElementById('authNickname');
@@ -95,7 +95,6 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// Управление модальными окнами
 document.getElementById('openAuth').onclick = () => authModal.classList.add('active');
 document.getElementById('closeAuth').onclick = () => authModal.classList.remove('active');
 
@@ -333,10 +332,12 @@ function subscribeToRoom(code) {
     unsubscribeRoom = db.collection("rooms").doc(code).onSnapshot(docSnap => {
         if (docSnap.exists) {
             const data = docSnap.data();
-            matchState = data.state;
-            p1NameInput.value = data.p1Name;
-            p2NameInput.value = data.p2Name;
-            updateUI();
+            if (data.state) {
+                matchState = data.state;
+                updateUI();
+            }
+            if (data.p1Name) p1NameInput.value = data.p1Name;
+            if (data.p2Name) p2NameInput.value = data.p2Name;
 
             if (data.participants) {
                 document.getElementById('roomPlayersList').innerHTML = data.participants.join('<br>');
@@ -371,6 +372,7 @@ function syncRoom() {
 p1NameInput.oninput = () => { syncRoom(); };
 p2NameInput.oninput = () => { syncRoom(); };
 
+
 // --- ОСНОВНАЯ ЛОГИКА ТЕННИСНОГО АРБИТРА ---
 let settings = {
     ttsEnabled: localStorage.getItem('tennis_tts') !== 'false',
@@ -396,7 +398,9 @@ let matchState = {
     elapsedSeconds: 0,
     p1TotalPointsWon: 0,
     p2TotalPointsWon: 0,
-    totalPointsPlayed: 0
+    totalPointsPlayed: 0,
+    badgeClass: "match-status-badge",
+    statusText: "Ожидание старта матча"
 };
 
 let timerInterval = null;
@@ -468,9 +472,8 @@ function toggleMatchState() {
         matchState.isPaused = false;
         matchState.startTime = Date.now() - (matchState.elapsedSeconds * 1000);
 
-        matchBadge.className = "match-status-badge active";
-        startPauseBtn.textContent = "⏸️ Пауза";
-        startPauseBtn.className = "btn btn-yellow";
+        matchState.badgeClass = "match-status-badge active";
+        matchState.statusText = "Матч идет: 0:00";
 
         if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
@@ -478,8 +481,11 @@ function toggleMatchState() {
                 matchState.elapsedSeconds = Math.floor((Date.now() - matchState.startTime) / 1000);
                 const mins = Math.floor(matchState.elapsedSeconds / 60);
                 const secs = matchState.elapsedSeconds % 60;
-                matchStatusText.textContent = `Матч идет: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
-                syncRoom();
+                matchState.statusText = `Матч идет: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                
+                if (isHost || userRole === "p1" || userRole === "p2") {
+                    syncRoom();
+                }
             }
         }, 1000);
 
@@ -489,10 +495,8 @@ function toggleMatchState() {
         matchState.isPaused = true;
         if (timerInterval) clearInterval(timerInterval);
 
-        matchBadge.className = "match-status-badge paused";
-        startPauseBtn.textContent = "▶️ Продолжить";
-        startPauseBtn.className = "btn btn-green";
-        matchStatusText.textContent = "Пауза";
+        matchState.badgeClass = "match-status-badge paused";
+        matchState.statusText = "Пауза";
 
         playBeep(500, 150);
         speak("Матч на паузе");
@@ -507,16 +511,14 @@ function finishMatch() {
     matchState.isPaused = false;
     if (timerInterval) clearInterval(timerInterval);
 
-    matchBadge.className = "match-status-badge finished";
-    matchStatusText.textContent = "Матч завершен";
-    startPauseBtn.textContent = "▶️ Старт матча";
-    startPauseBtn.className = "btn btn-yellow";
+    matchState.badgeClass = "match-status-badge finished";
+    matchState.statusText = "Матч завершен";
 
     playBeep(400, 300);
     speak("Матч завершен!");
     syncRoom();
 
-    if (currentUser) {
+    if (currentUser && (isHost || userRole === "p1")) {
         db.collection("matches").add({
             userId: currentUser.uid,
             player1: p1NameInput.value,
@@ -563,9 +565,8 @@ function addPoint(player) {
         matchState.isStarted = true;
         matchState.isPaused = false;
         matchState.startTime = Date.now() - (matchState.elapsedSeconds * 1000);
-        matchBadge.className = "match-status-badge active";
-        startPauseBtn.textContent = "⏸️ Пауза";
-        startPauseBtn.className = "btn btn-yellow";
+        matchState.badgeClass = "match-status-badge active";
+        matchState.statusText = "Матч идет: 0:00";
     }
 
     saveHistory();
@@ -657,18 +658,16 @@ function toggleServer(userAction = true) {
 function resetMatch() {
     if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") return;
     if (timerInterval) clearInterval(timerInterval);
+    
     matchState = {
         p1PointsIndex: 0, p2PointsIndex: 0, p1Games: 0, p2Games: 0,
         p1Sets: [], p2Sets: [], server: 1, isTiebreak: false,
         p1TBPoints: 0, p2TBPoints: 0, isFinished: false, isStarted: false,
         isPaused: false, startTime: null, elapsedSeconds: 0,
-        p1TotalPointsWon: 0, p2TotalPointsWon: 0, totalPointsPlayed: 0
+        p1TotalPointsWon: 0, p2TotalPointsWon: 0, totalPointsPlayed: 0,
+        badgeClass: "match-status-badge",
+        statusText: "Ожидание старта матча"
     };
-    
-    matchBadge.className = "match-status-badge";
-    matchStatusText.textContent = "Ожидание старта матча";
-    startPauseBtn.textContent = "▶️ Старт матча";
-    startPauseBtn.className = "btn btn-yellow";
     
     history = [];
     updateUI();
@@ -689,6 +688,24 @@ function updateUI() {
     p2GamesEl.textContent = `Геймы: ${matchState.p2Games} ${matchState.isTiebreak ? '(ТБ)' : ''}`;
     p1SetsEl.textContent = `Сеты: ${matchState.p1Sets.join(' | ') || '-'}`;
     p2SetsEl.textContent = `Сеты: ${matchState.p2Sets.join(' | ') || '-'}`;
+
+    if (matchState.badgeClass) {
+        matchBadge.className = matchState.badgeClass;
+    }
+    if (matchState.statusText) {
+        matchStatusText.textContent = matchState.statusText;
+    }
+
+    if (matchState.isStarted && !matchState.isFinished && !matchState.isPaused) {
+        startPauseBtn.textContent = "⏸️ Пауза";
+        startPauseBtn.className = "btn btn-yellow";
+    } else if (matchState.isPaused) {
+        startPauseBtn.textContent = "▶️ Продолжить";
+        startPauseBtn.className = "btn btn-green";
+    } else {
+        startPauseBtn.textContent = "▶️ Старт матча";
+        startPauseBtn.className = "btn btn-yellow";
+    }
 
     if (matchState.server === 1) {
         player1Card.classList.add('serving');
