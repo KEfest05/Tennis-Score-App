@@ -154,6 +154,16 @@ h1 {
     transition: all 0.3s ease;
 }
 
+/* РЕЖИМ ЗРИТЕЛЯ: Скрываем панель управления и микрофон */
+body.viewer-mode .controls,
+body.viewer-mode .mic-section {
+    display: none !important;
+}
+
+body.viewer-mode .scoreboard input {
+    pointer-events: none;
+}
+
 /* ПОЛНОЭКРАННЫЙ РЕЖИМ */
 body.fullscreen-mode header,
 body.fullscreen-mode .controls,
@@ -191,6 +201,10 @@ body.fullscreen-mode .mic-section {
     z-index: 99999 !important;
     box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
     display: flex !important;
+}
+
+body.fullscreen-mode.viewer-mode .mic-section {
+    display: none !important;
 }
 
 body.fullscreen-mode .mic-btn {
