@@ -345,7 +345,6 @@ function subscribeToRoom(code) {
                 document.getElementById('roomPlayersList').innerHTML = data.participants.join('<br>');
             }
 
-            // Если матч завершился на другом устройстве, авторизованные участники сохраняют его в личный кабинет
             if (matchState.isFinished && !wasFinished) {
                 if (currentUser && (userRole === "p1" || userRole === "p2" || isHost)) {
                     saveMatchToPersonalHistory();
@@ -485,7 +484,9 @@ function toggleMatchState() {
         matchState.startTime = Date.now() - (matchState.elapsedSeconds * 1000);
 
         matchState.badgeClass = "match-status-badge active";
-        matchState.statusText = "Матч идет: 0:00";
+        matchState.statusText = `Матч идет: 0:00`;
+
+        updateUI();
 
         if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
@@ -495,7 +496,11 @@ function toggleMatchState() {
                 const secs = matchState.elapsedSeconds % 60;
                 matchState.statusText = `Матч идет: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
                 
-                if (isHost || userRole === "p1" || userRole === "p2") {
+                if (matchStatusText) {
+                    matchStatusText.textContent = matchState.statusText;
+                }
+
+                if (currentRoomCode) {
                     syncRoom();
                 }
             }
@@ -509,6 +514,8 @@ function toggleMatchState() {
 
         matchState.badgeClass = "match-status-badge paused";
         matchState.statusText = "Пауза";
+
+        updateUI();
 
         playBeep(500, 150);
         speak("Матч на паузе");
@@ -531,8 +538,6 @@ function finishMatch() {
     speak("Матч завершен!");
     
     syncRoom();
-
-    // Сохраняем матч в личный кабинет текущего пользователя
     saveMatchToPersonalHistory();
 
     updateStatsDisplay();
