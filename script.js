@@ -54,6 +54,16 @@ const ttsToggle = document.getElementById('ttsToggle');
 const continuousToggle = document.getElementById('continuousToggle');
 const beepToggle = document.getElementById('beepToggle');
 
+// --- УПРАВЛЕНИЕ ПРАВАМИ И ДОСТУПОМ ---
+function updateControlPermissions() {
+    // Если мы в комнате и роль зрителя (не хост, не игрок 1 и не игрок 2)
+    if (currentRoomCode && userRole === "viewer") {
+        document.body.classList.add('viewer-mode');
+    } else {
+        document.body.classList.remove('viewer-mode');
+    }
+}
+
 // --- АВТОРИЗАЦИЯ И ПРОФИЛЬ ---
 showRegisterBtn.onclick = () => {
     if (!isRegisterMode) {
@@ -226,6 +236,7 @@ document.getElementById('createRoomBtn').onclick = () => {
     currentRoomCode = code;
     isHost = true;
     userRole = "host";
+    updateControlPermissions();
 
     const hostName = currentNick || "Судья";
     myParticipantEntry = hostName + " (Судья)";
@@ -284,6 +295,7 @@ function joinAsRole(role) {
     currentRoomCode = pendingRoomCode;
     userRole = role;
     isHost = false;
+    updateControlPermissions();
 
     db.collection("rooms").doc(currentRoomCode).get().then(doc => {
         if (!doc.exists) return alert("Комната не найдена!");
@@ -313,7 +325,6 @@ function joinAsRole(role) {
 
         let participants = data.participants || [];
         
-        // Удаляем старые записи этого пользователя по имени, чтобы не было дублей
         participants = participants.filter(p => !p.startsWith(myName));
 
         const roleLabel = role === "p1" ? " (Игрок 1)" : role === "p2" ? " (Игрок 2)" : " (Зритель)";
@@ -416,6 +427,8 @@ function cleanupRoomState() {
     isHost = false;
     userRole = "viewer";
     myParticipantEntry = null;
+    
+    updateControlPermissions(); // Возвращаем полный доступ интерфейсу вне комнаты
     
     document.getElementById('roomControls').style.display = 'block';
     document.getElementById('roomActiveInfo').style.display = 'none';
@@ -890,6 +903,7 @@ if (SpeechRecognition) {
     let manualStop = false;
 
     micBtn.addEventListener('click', () => {
+        if (currentRoomCode && userRole === "viewer") return; // Зрители не могут использовать микрофон
         if (isListening) { manualStop = true; recognition.stop(); }
         else { manualStop = false; try { recognition.start(); } catch(e) { console.log(e); } }
     });
@@ -900,6 +914,7 @@ if (SpeechRecognition) {
         isListening = false; micBtn.classList.remove('listening'); statusText.textContent = "Микрофон выключен";
     };
     recognition.onresult = (event) => {
+        if (currentRoomCode && userRole === "viewer") return;
         const transcript = event.results[event.resultIndex][0].transcript.trim().toLowerCase();
         lastCommand.textContent = `Команда: "${transcript}"`;
         processVoiceCommand(transcript);
