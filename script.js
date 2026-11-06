@@ -147,9 +147,9 @@ function loadUserProfileAndMatches() {
     const historyListContainer = document.getElementById('matchesHistoryList');
     historyListContainer.innerHTML = "Загрузка истории...";
 
+    // Загружаем матчи только по фильтру userId (без .orderBy), чтобы не требовать индексов в Firestore
     db.collection("matches")
         .where("userId", "==", currentUser.uid)
-        .orderBy("timestamp", "desc")
         .get()
         .then((querySnapshot) => {
             historyListContainer.innerHTML = "";
@@ -160,8 +160,20 @@ function loadUserProfileAndMatches() {
                 return;
             }
 
+            // Собираем данные в массив и сортируем их по дате (сначала новые) прямо в JavaScript
+            let matches = [];
             querySnapshot.forEach((doc) => {
-                const match = doc.data();
+                matches.push(doc.data());
+            });
+
+            matches.sort((a, b) => {
+                const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
+                const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
+                return timeB - timeA; // От новых к старым
+            });
+
+            // Рендерим отсортированный список на экран
+            matches.forEach((match) => {
                 const date = match.timestamp ? match.timestamp.toDate().toLocaleDateString('ru-RU') : "Недавно";
                 const mins = Math.floor((match.durationSeconds || 0) / 60);
                 const setsP1 = match.p1Sets ? match.p1Sets.join('-') : '0';
@@ -186,9 +198,10 @@ function loadUserProfileAndMatches() {
         })
         .catch((error) => {
             console.error("Ошибка загрузки истории:", error);
-            historyListContainer.innerHTML = "<p style='color: var(--accent-red); font-size: 0.85rem;'>Ошибка загрузки. Если в консоли есть ссылка на индекс Firestore, нажмите на неё.</p>";
+            historyListContainer.innerHTML = "<p style='color: var(--accent-red); font-size: 0.85rem;'>Ошибка загрузки истории матчей.</p>";
         });
 }
+
 
 // --- УПРАВЛЕНИЕ КОМНАТАМИ ---
 document.getElementById('createRoomBtn').onclick = () => {
