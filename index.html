@@ -6,6 +6,11 @@
     <title>Голосовой теннисный арбитр</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Подключаем SDK Firebase через CDN -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -20,11 +25,33 @@
         </div>
 
         <div class="header-btns">
+            <button class="icon-btn" id="openAuth" title="Аккаунт и синхронизация">👤</button>
             <button class="icon-btn" id="openStats" title="Статистика матча">📊</button>
             <button class="icon-btn" id="fullscreenBtn" title="На весь экран">⛶</button>
             <button class="icon-btn" id="openSettings" title="Настройки">⚙️</button>
         </div>
     </header>
+
+    <!-- Модальное окно авторизации / профиля -->
+    <div class="modal" id="authModal">
+        <div class="modal-content">
+            <h3>👤 Аккаунт и облако</h3>
+            <div id="authLoggedOut">
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Войдите, чтобы сохранять статистику матчей в облаке.</p>
+                <input type="email" id="authEmail" placeholder="Email" class="player-name-input" style="width: 100%; margin-bottom: 10px; font-size: 1rem;">
+                <input type="password" id="authPassword" placeholder="Пароль" class="player-name-input" style="width: 100%; margin-bottom: 15px; font-size: 1rem;">
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-green" id="loginBtn" style="flex: 1;">Войти</button>
+                    <button class="btn btn-blue" id="registerBtn" style="flex: 1;">Регистрация</button>
+                </div>
+            </div>
+            <div id="authLoggedIn" style="display: none;">
+                <p style="margin-bottom: 10px;">Вы вошли как: <strong id="userEmailDisplay" style="color: var(--accent-green);"></strong></p>
+                <button class="btn" style="background-color: var(--accent-red); width: 100%; margin-bottom: 10px;" id="logoutBtn">Выйти из аккаунта</button>
+            </div>
+            <button class="btn btn-blue" id="closeAuth" style="margin-top: 5px;">Закрыть</button>
+        </div>
+    </div>
 
     <!-- Модальное окно настроек -->
     <div class="modal" id="settingsModal">
@@ -113,7 +140,7 @@
             <button class="btn btn-yellow" id="startPauseBtn" onclick="toggleMatchState()">▶️ Старт матча</button>
             <button class="btn btn-green" onclick="addPoint(1)">+1 Игрок 1</button>
             <button class="btn btn-green" onclick="addPoint(2)">+1 Игрок 2</button>
-            <button class="btn btn-blue" onclick="toggleServer()">Сменить подачу</button>
+            <button class="btn btn-blue" onclick="toggleServer()">Смена подачи</button>
             <button class="btn" onclick="undoLast()">Отмена (Undo)</button>
             <button class="btn" style="background-color: #3b82f6;" onclick="finishMatch()">🏁 Завершить</button>
             <button class="btn" style="background-color: var(--accent-red);" onclick="resetMatch()">Сброс матча</button>
