@@ -26,6 +26,7 @@
 
         <div class="header-btns">
             <button class="icon-btn" id="openRoom" title="Онлайн комнаты">🌐</button>
+            <button class="icon-btn" id="openProfile" title="Личный кабинет">📂</button>
             <button class="icon-btn" id="openAuth" title="Аккаунт и синхронизация">👤</button>
             <button class="icon-btn" id="openStats" title="Статистика матча">📊</button>
             <button class="icon-btn" id="fullscreenBtn" title="На весь экран">⛶</button>
@@ -55,21 +56,47 @@
         </div>
     </div>
 
+    <!-- Модальное окно личного кабинета -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+            <h3>📂 Личный кабинет</h3>
+            <div id="profileNotLogged" style="color: var(--text-muted); text-align: center; padding: 10px;">
+                Войдите в аккаунт, чтобы видеть свою статистику.
+            </div>
+            <div id="profileLogged" style="display: none;">
+                <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="margin-bottom: 5px;">Ник: <strong id="profileNick" style="color: var(--accent-yellow);"></strong></p>
+                    <p style="margin-bottom: 5px;">Email: <span id="profileEmail" style="color: var(--text-muted);"></span></p>
+                    <p>Всего матчей в истории: <strong id="profileMatchesCount" style="color: var(--accent-green);">0</strong></p>
+                </div>
+                <h4 style="color: var(--accent-blue); margin-bottom: 10px; font-size: 1rem;">История ваших матчей:</h4>
+                <div id="matchesHistoryList" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;">
+                    <!-- Сюда подгружаются матчи -->
+                </div>
+            </div>
+            <button class="btn btn-blue" id="closeProfile" style="margin-top: 15px;">Закрыть</button>
+        </div>
+    </div>
+
     <!-- Модальное окно авторизации / профиля -->
     <div class="modal" id="authModal">
         <div class="modal-content">
             <h3>👤 Аккаунт и облако</h3>
             <div id="authLoggedOut">
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Войдите, чтобы сохранять статистику матчей в облаке.</p>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Войдите или зарегистрируйтесь:</p>
+                <input type="text" id="authNickname" placeholder="Ваш ник (для таблицы)" class="player-name-input" style="width: 100%; margin-bottom: 10px; font-size: 1rem; display: none;">
                 <input type="email" id="authEmail" placeholder="Email" class="player-name-input" style="width: 100%; margin-bottom: 10px; font-size: 1rem;">
                 <input type="password" id="authPassword" placeholder="Пароль" class="player-name-input" style="width: 100%; margin-bottom: 15px; font-size: 1rem;">
-                <div style="display: flex; gap: 10px;">
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
                     <button class="btn btn-green" id="loginBtn" style="flex: 1;">Войти</button>
-                    <button class="btn btn-blue" id="registerBtn" style="flex: 1;">Регистрация</button>
+                    <button class="btn btn-blue" id="showRegisterBtn" style="flex: 1;">Регистрация</button>
+                    <button class="btn btn-green" id="registerBtn" style="flex: 1; display: none;">Создать аккаунт</button>
                 </div>
             </div>
             <div id="authLoggedIn" style="display: none;">
-                <p style="margin-bottom: 10px;">Вы вошли как: <strong id="userEmailDisplay" style="color: var(--accent-green);"></strong></p>
+                <p style="margin-bottom: 5px;">Вы вошли как: <strong id="userEmailDisplay" style="color: var(--accent-green);"></strong></p>
+                <p style="margin-bottom: 15px; font-size: 0.9rem; color: var(--text-muted);">Ник: <span id="userNickDisplay" style="color: var(--accent-yellow);"></span></p>
                 <button class="btn" style="background-color: var(--accent-red); width: 100%; margin-bottom: 10px;" id="logoutBtn">Выйти из аккаунта</button>
             </div>
             <button class="btn btn-blue" id="closeAuth" style="margin-top: 5px;">Закрыть</button>
