@@ -23,7 +23,6 @@ let pendingRoomCode = null;
 let unsubscribeRoom = null;
 let isRegisterMode = false;
 let myParticipantEntry = null; // Точная запись текущего пользователя в списке участников
-let isServerSyncPaused = false; // Флаг защиты от сетевого отката счета
 
 // --- DOM ЭЛЕМЕНТЫ ---
 const p1NameInput = document.getElementById('p1Name');
@@ -350,9 +349,6 @@ function subscribeToRoom(code) {
     if (unsubscribeRoom) unsubscribeRoom();
 
     unsubscribeRoom = db.collection("rooms").doc(code).onSnapshot(docSnap => {
-        // Если мы только что сами нажали кнопку, игнорируем входящее эхо от сервера на 1 секунду
-        if (isServerSyncPaused) return;
-
         if (docSnap.exists) {
             const data = docSnap.data();
             const wasFinished = matchState.isFinished;
@@ -428,7 +424,6 @@ function cleanupRoomState() {
     isHost = false;
     userRole = "viewer";
     myParticipantEntry = null;
-    isServerSyncPaused = false;
     
     updateControlPermissions();
     
@@ -444,6 +439,7 @@ function cleanupRoomState() {
 function resetMatchStateOnly() {
     if (timerInterval) clearInterval(timerInterval);
     matchState = {
+        lastActionId: "",
         p1PointsIndex: 0, p2PointsIndex: 0, p1Games: 0, p2Games: 0,
         p1Sets: [], p2Sets: [], server: 1, isTiebreak: false,
         p1TBPoints: 0, p2TBPoints: 0, isFinished: false, isStarted: false,
@@ -457,9 +453,7 @@ function resetMatchStateOnly() {
 
 function syncRoom() {
     if (currentRoomCode && (isHost || userRole === "p1" || userRole === "p2")) {
-        // Включаем паузу для входящих сетевых эхо-ответов на 1 секунду
-        isServerSyncPaused = true;
-        setTimeout(() => { isServerSyncPaused = false; }, 1000);
+        matchState.lastActionId = Math.random().toString(36).substring(2, 10);
 
         db.collection("rooms").doc(currentRoomCode).set({
             state: matchState,
@@ -467,7 +461,6 @@ function syncRoom() {
             p2Name: p2NameInput.value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true }).catch(err => {
-            isServerSyncPaused = false;
             console.error("Ошибка синхронизации:", err);
         });
     }
@@ -485,6 +478,7 @@ let settings = {
 };
 
 let matchState = {
+    lastActionId: "",
     p1PointsIndex: 0,
     p2PointsIndex: 0,
     p1Games: 0,
@@ -781,6 +775,7 @@ function resetMatch() {
     if (timerInterval) clearInterval(timerInterval);
     
     matchState = {
+        lastActionId: "",
         p1PointsIndex: 0, p2PointsIndex: 0, p1Games: 0, p2Games: 0,
         p1Sets: [], p2Sets: [], server: 1, isTiebreak: false,
         p1TBPoints: 0, p2TBPoints: 0, isFinished: false, isStarted: false,
