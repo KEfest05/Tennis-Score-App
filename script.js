@@ -23,6 +23,7 @@ let pendingRoomCode = null;
 let unsubscribeRoom = null;
 let isRegisterMode = false;
 let myParticipantEntry = null; // Точная запись текущего пользователя в списке участников
+let isServerSyncPaused = false; // Флаг защиты от сетевого отката счета
 
 // --- DOM ЭЛЕМЕНТЫ ---
 const p1NameInput = document.getElementById('p1Name');
@@ -349,11 +350,13 @@ function subscribeToRoom(code) {
     if (unsubscribeRoom) unsubscribeRoom();
 
     unsubscribeRoom = db.collection("rooms").doc(code).onSnapshot(docSnap => {
+        // Если мы только что сами нажали кнопку, игнорируем входящее эхо от сервера на 1 секунду
+        if (isServerSyncPaused) return;
+
         if (docSnap.exists) {
             const data = docSnap.data();
             const wasFinished = matchState.isFinished;
 
-            // Единый источник правды: обновляем интерфейс строго по данным от сервера
             if (data.state) {
                 matchState = data.state;
                 updateUI();
@@ -425,6 +428,7 @@ function cleanupRoomState() {
     isHost = false;
     userRole = "viewer";
     myParticipantEntry = null;
+    isServerSyncPaused = false;
     
     updateControlPermissions();
     
@@ -453,12 +457,19 @@ function resetMatchStateOnly() {
 
 function syncRoom() {
     if (currentRoomCode && (isHost || userRole === "p1" || userRole === "p2")) {
+        // Включаем паузу для входящих сетевых эхо-ответов на 1 секунду
+        isServerSyncPaused = true;
+        setTimeout(() => { isServerSyncPaused = false; }, 1000);
+
         db.collection("rooms").doc(currentRoomCode).set({
             state: matchState,
             p1Name: p1NameInput.value,
             p2Name: p2NameInput.value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).catch(err => console.error("Ошибка синхронизации:", err));
+        }, { merge: true }).catch(err => {
+            isServerSyncPaused = false;
+            console.error("Ошибка синхронизации:", err);
+        });
     }
 }
 
@@ -568,6 +579,8 @@ function toggleMatchState() {
         matchState.badgeClass = "match-status-badge active";
         matchState.statusText = `Матч идет: 0:00`;
 
+        updateUI();
+
         if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
             if (matchState.isStarted && !matchState.isPaused && !matchState.isFinished) {
@@ -594,6 +607,8 @@ function toggleMatchState() {
 
         matchState.badgeClass = "match-status-badge paused";
         matchState.statusText = "Пауза";
+
+        updateUI();
 
         playBeep(500, 150);
         speak("Матч на паузе");
@@ -652,6 +667,7 @@ function undoLast() {
     if (matchState.isFinished) return;
     if (history.length > 0) {
         matchState = history.pop();
+        updateUI();
         syncRoom();
         playBeep(400, 150);
         speak("Очко отменено");
@@ -685,6 +701,7 @@ function addPoint(player) {
         handleStandardPoint(player);
     }
 
+    updateUI();
     syncRoom();
     playBeep(700, 100);
     announceScore();
@@ -754,6 +771,7 @@ function winSet(player) {
 function toggleServer(userAction = true) {
     if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") return;
     matchState.server = matchState.server === 1 ? 2 : 1;
+    updateUI();
     syncRoom();
     if (userAction) speak("Смена подачи");
 }
@@ -773,6 +791,7 @@ function resetMatch() {
     };
     
     history = [];
+    updateUI();
     syncRoom();
     speak("Матч сброшен");
 }
