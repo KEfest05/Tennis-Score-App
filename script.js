@@ -353,15 +353,11 @@ function subscribeToRoom(code) {
             const data = docSnap.data();
             const wasFinished = matchState.isFinished;
 
-            // Принимаем данные от сервера ТОЛЬКО ЕСЛИ их версия новее или равна нашей локальной версии
+            // Единый источник правды: обновляем интерфейс строго по данным от сервера
             if (data.state) {
-                const serverVersion = data.state.version || 0;
-                if (serverVersion >= matchState.version) {
-                    matchState = data.state;
-                    updateUI();
-                }
+                matchState = data.state;
+                updateUI();
             }
-
             if (data.p1Name) p1NameInput.value = data.p1Name;
             if (data.p2Name) p2NameInput.value = data.p2Name;
 
@@ -444,7 +440,6 @@ function cleanupRoomState() {
 function resetMatchStateOnly() {
     if (timerInterval) clearInterval(timerInterval);
     matchState = {
-        version: 0,
         p1PointsIndex: 0, p2PointsIndex: 0, p1Games: 0, p2Games: 0,
         p1Sets: [], p2Sets: [], server: 1, isTiebreak: false,
         p1TBPoints: 0, p2TBPoints: 0, isFinished: false, isStarted: false,
@@ -458,17 +453,12 @@ function resetMatchStateOnly() {
 
 function syncRoom() {
     if (currentRoomCode && (isHost || userRole === "p1" || userRole === "p2")) {
-        // Увеличиваем версию при каждом локальном действии перед отправкой в базу
-        matchState.version++;
-
         db.collection("rooms").doc(currentRoomCode).set({
             state: matchState,
             p1Name: p1NameInput.value,
             p2Name: p2NameInput.value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).catch(err => {
-            console.error("Ошибка синхронизации:", err);
-        });
+        }, { merge: true }).catch(err => console.error("Ошибка синхронизации:", err));
     }
 }
 
@@ -484,7 +474,6 @@ let settings = {
 };
 
 let matchState = {
-    version: 0,
     p1PointsIndex: 0,
     p2PointsIndex: 0,
     p1Games: 0,
@@ -579,8 +568,6 @@ function toggleMatchState() {
         matchState.badgeClass = "match-status-badge active";
         matchState.statusText = `Матч идет: 0:00`;
 
-        updateUI();
-
         if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
             if (matchState.isStarted && !matchState.isPaused && !matchState.isFinished) {
@@ -607,8 +594,6 @@ function toggleMatchState() {
 
         matchState.badgeClass = "match-status-badge paused";
         matchState.statusText = "Пауза";
-
-        updateUI();
 
         playBeep(500, 150);
         speak("Матч на паузе");
@@ -667,7 +652,6 @@ function undoLast() {
     if (matchState.isFinished) return;
     if (history.length > 0) {
         matchState = history.pop();
-        updateUI();
         syncRoom();
         playBeep(400, 150);
         speak("Очко отменено");
@@ -701,7 +685,6 @@ function addPoint(player) {
         handleStandardPoint(player);
     }
 
-    updateUI();
     syncRoom();
     playBeep(700, 100);
     announceScore();
@@ -771,7 +754,6 @@ function winSet(player) {
 function toggleServer(userAction = true) {
     if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") return;
     matchState.server = matchState.server === 1 ? 2 : 1;
-    updateUI();
     syncRoom();
     if (userAction) speak("Смена подачи");
 }
@@ -781,7 +763,6 @@ function resetMatch() {
     if (timerInterval) clearInterval(timerInterval);
     
     matchState = {
-        version: matchState.version + 1,
         p1PointsIndex: 0, p2PointsIndex: 0, p1Games: 0, p2Games: 0,
         p1Sets: [], p2Sets: [], server: 1, isTiebreak: false,
         p1TBPoints: 0, p2TBPoints: 0, isFinished: false, isStarted: false,
@@ -792,7 +773,6 @@ function resetMatch() {
     };
     
     history = [];
-    updateUI();
     syncRoom();
     speak("Матч сброшен");
 }
