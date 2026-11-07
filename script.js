@@ -355,7 +355,7 @@ function subscribeToRoom(code) {
 
             if (data.state) {
                 matchState = data.state;
-                updateUI();
+                updateUI(); // Единый источник правды: рендер строго по серверным данным
             }
             if (data.p1Name) p1NameInput.value = data.p1Name;
             if (data.p2Name) p2NameInput.value = data.p2Name;
@@ -573,8 +573,6 @@ function toggleMatchState() {
         matchState.badgeClass = "match-status-badge active";
         matchState.statusText = `Матч идет: 0:00`;
 
-        updateUI();
-
         if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
             if (matchState.isStarted && !matchState.isPaused && !matchState.isFinished) {
@@ -601,8 +599,6 @@ function toggleMatchState() {
 
         matchState.badgeClass = "match-status-badge paused";
         matchState.statusText = "Пауза";
-
-        updateUI();
 
         playBeep(500, 150);
         speak("Матч на паузе");
@@ -661,7 +657,6 @@ function undoLast() {
     if (matchState.isFinished) return;
     if (history.length > 0) {
         matchState = history.pop();
-        updateUI();
         syncRoom();
         playBeep(400, 150);
         speak("Очко отменено");
@@ -695,7 +690,6 @@ function addPoint(player) {
         handleStandardPoint(player);
     }
 
-    updateUI();
     syncRoom();
     playBeep(700, 100);
     announceScore();
@@ -765,7 +759,6 @@ function winSet(player) {
 function toggleServer(userAction = true) {
     if (currentRoomCode && !isHost && userRole !== "p1" && userRole !== "p2") return;
     matchState.server = matchState.server === 1 ? 2 : 1;
-    updateUI();
     syncRoom();
     if (userAction) speak("Смена подачи");
 }
@@ -786,7 +779,6 @@ function resetMatch() {
     };
     
     history = [];
-    updateUI();
     syncRoom();
     speak("Матч сброшен");
 }
